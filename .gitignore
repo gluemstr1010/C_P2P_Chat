@@ -1,0 +1,5 @@
+*
+!trackerserver/
+!*.c
+!*.md
+!.gitignore
