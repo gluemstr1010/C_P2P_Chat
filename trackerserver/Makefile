@@ -18,5 +18,8 @@ $(BINARY): $(TRCK_OBJ_FILES)
 $(TRCK_OBJ_DIR)/%.o: $(TRCK_SRC_DIR)/%.c
 	gcc $(GCC_FLAGS) -c $^ -I$(TRCK_HDR_DIR) -o $@
 
+$(TRCK_OBJ_DIR):
+	mkdir $@
+
 clean:
 	rm -rf $(BINARY) $(TRCK_OBJ_DIR)

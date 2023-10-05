@@ -1,5 +1,10 @@
 *
 !trackerserver/
+!src/
+!trackerlib/
+!testclient/
 !*.c
+!*.h
 !*.md
+!Makefile
 !.gitignore
