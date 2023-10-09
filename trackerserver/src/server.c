@@ -13,15 +13,6 @@
 
 #define PORT 19302
 
-struct ci
-{
-    int32_t client_addr;
-    int16_t client_port;
-    char *chatroom; 
-    char *usrname;
-};
-typedef struct ci client_info;
-
 int main()
 {
     int server_sockfd;
@@ -67,14 +58,33 @@ int main()
 
     printf("\n Waiting for incoming connections ...");
 
+    // SERV_MSG req;
+    // while(true)
+    // {
+    //     bzero(&req,sizeof(req));
+    //     printf("\n Waiting for incoming connections ...");
+    //     int client_sockfd = accept(server_sockfd, (struct sockaddr*)&client_addr, &addr_size);
+    //     recv(client_sockfd,&req,sizeof(req),0);
+    //     if(req.message_type == 0x01)
+    //     {
+    //         make_find_res(req);
+    //     }
+    //     if(req.message_type == 0x02)
+    //     {
+    //         make_alloc_res(req);
+    //     }
+    // }
+
         
      int client_sockfd = accept(server_sockfd, (struct sockaddr*)&client_addr, &addr_size);
      recv(client_sockfd,&find_req,sizeof(find_req),0);
 
-     printf("0x%02X",find_req.attributes[7]);
-     printf("0x%02X",find_req.attributes[8]);
+     make_alloc_res(find_req);
 
      
+
+    
+    //  uint16_t port = *(int16_t*)(&find_req.attributes[7]); 
 
     return 0;
 }
