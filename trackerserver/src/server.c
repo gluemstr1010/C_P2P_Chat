@@ -81,7 +81,7 @@ int main()
 
      make_alloc_res(find_req);
 
-     
+     close(server_sockfd);
 
     
     //  uint16_t port = *(int16_t*)(&find_req.attributes[7]); 

@@ -77,9 +77,22 @@ int main(){
    find_req.attributes[13] = 0x02;
    char *chatname = "Valve";
    find_req.attributes[14] = strlen(chatname);
-   for(int i = 15 ; i < 14 + strlen(chatname); i++ )
+   char let;
+   int a;
+   for(int i = 15 ; i < 15 + strlen(chatname); i++ )
    {
-      find_req.attributes[i] = 1;
+      let = chatname[i - 15];
+      a = (int)let;
+      find_req.attributes[i] = a;
+   }
+   char *usrname = "Franta";
+   find_req.attributes[16 + strlen(chatname)] = strlen(usrname);
+   for(int i = 17 + strlen(chatname); i < 17 + strlen(chatname) + strlen(usrname); i++)
+   {
+      let = usrname[i - (17 + strlen(chatname))];
+      a = (int)let;
+      find_req.attributes[i] = a;
+      printf("%c",let);
    }
    
     u_int16_t Value_size = 0;

@@ -19,12 +19,24 @@ void make_alloc_res(SERV_MSG alloc_req)
 
    int16_t port = ntohs(*(int16_t*)(&alloc_req.attributes[7]));  
 
-   int len = alloc_req.attributes[14];
-
-   for( int i = 15; i < 14 + len ; i++)
+   int chatnamelen = alloc_req.attributes[14];
+   char *chatname = malloc(13);
+   char let;
+   for( int i = 15; i < 15 + chatnamelen ; i++)
    {
-      printf("%d\n", alloc_req.attributes[i]);
+      let = (char)alloc_req.attributes[i];
+      chatname[i-15] = let;
    }
+   char *usrname = malloc(13);
+   int usrnamelen = alloc_req.attributes[16 + chatnamelen];
+   
+   for(int i = 17 + chatnamelen; i < 17 + chatnamelen + usrnamelen ; i++ )
+   {
+      let = (char)alloc_req.attributes[i];
+      usrname[i-(17+chatnamelen)] = let;
+      printf("%c",let);
+   }
+   
 
    
 //    for(int i = 0; i < sizeof(servers) / sizeof(servers[0]); i++)
