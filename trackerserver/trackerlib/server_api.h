@@ -25,8 +25,8 @@ typedef struct ci client_info;
 
 void make_find_res(SERV_MSG find_req);
 
-void make_alloc_res(SERV_MSG alloc_req);
-int canbe_server(client_info info,SERV_MSG alloc_req);
+void make_alloc_res(SERV_MSG alloc_req,int client_sockfd);
+int canbe_server(SERV_MSG alloc_req,int i,char *chatname,uint8_t temp_add[],int16_t port);
 
 
 #endif

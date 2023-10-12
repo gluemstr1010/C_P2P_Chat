@@ -49,16 +49,33 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+    
+    printf("\n Waiting for incoming connections ...");
+    fflush(stdout);
     struct sockaddr_in client_addr;
     socklen_t addr_size;
     addr_size = sizeof(client_addr);
 
-    SERV_MSG find_req;
-     bzero(&find_req,sizeof(find_req));
+    SERV_MSG req;
+    
+    while(true)
+    {
+         bzero(&req,sizeof(req));
+         bzero(&client_addr,sizeof(client_addr));
+        int client_sockfd = accept(server_sockfd, (struct sockaddr*)&client_addr, &addr_size);
+        recv(client_sockfd,&req,sizeof(req),0);
 
-    printf("\n Waiting for incoming connections ...");
+        if(req.message_type == 0x02)
+        {
+            make_alloc_res(req,client_sockfd);
+        }
 
-    // SERV_MSG req;
+    }
+    
+    return 0;
+}
+
+// SERV_MSG req;
     // while(true)
     // {
     //     bzero(&req,sizeof(req));
@@ -74,17 +91,3 @@ int main()
     //         make_alloc_res(req);
     //     }
     // }
-
-        
-     int client_sockfd = accept(server_sockfd, (struct sockaddr*)&client_addr, &addr_size);
-     recv(client_sockfd,&find_req,sizeof(find_req),0);
-
-     make_alloc_res(find_req);
-
-     close(server_sockfd);
-
-    
-    //  uint16_t port = *(int16_t*)(&find_req.attributes[7]); 
-
-    return 0;
-}

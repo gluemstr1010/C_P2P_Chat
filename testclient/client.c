@@ -56,7 +56,7 @@ int main(){
     struct sm find_req;
     bzero(&find_req,sizeof(find_req));
 
-    find_req.message_type = 0x01;
+    find_req.message_type = 0x02;
     for(int i = 0; i < sizeof(find_req.trasaction_id) / sizeof(find_req.trasaction_id[0]); i++)
     {
         find_req.trasaction_id[i] = rand() % 256;
@@ -64,7 +64,7 @@ int main(){
 
     find_req.attributes[1] = 0x01;
     
-    int16_t port = 0x317A;
+    int16_t port = 0x31FF;
    find_req.attributes[7] = (port >> 8) & 0xFF;
    find_req.attributes[8] = port & 0xFF;
    uint32_t ipadd = 0x4E50C3EA;
@@ -95,12 +95,15 @@ int main(){
       printf("%c",let);
    }
    
+   
     u_int16_t Value_size = 0;
    
    find_req.message_length = htons(sizeof(find_req.attributes));
    find_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
 
    send(sockfd,&find_req,sizeof(find_req),0);
+
+   close(sockfd);
 
     return 0;
 }
