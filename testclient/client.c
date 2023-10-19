@@ -92,10 +92,19 @@ int main(){
       let = usrname[i - (17 + strlen(chatname))];
       a = (int)let;
       find_req.attributes[i] = a;
-      printf("%c",let);
    }
+   find_req.attributes[18 + strlen(chatname) + strlen(usrname)] = 0x11;
+   find_req.attributes[19 + strlen(chatname) + strlen(usrname)] = 0xA;
+//    find_req.attributes[18 + strlen(chatname) + strlen(usrname)] = 0x03;
+//    find_req.attributes[19 + strlen(chatname) + strlen(usrname)] = 0x4B;
+//    find_req.attributes[20 + strlen(chatname) + strlen(usrname)] = 0x66;
+//    find_req.attributes[21 + strlen(chatname) + strlen(usrname)] = (highpart >> 8) & 0xFF;
+//    find_req.attributes[22 + strlen(chatname) + strlen(usrname)] = highpart & 0xFF;
+//    find_req.attributes[23 + strlen(chatname) + strlen(usrname)] = (lowpart >> 8) & 0xFF;
+//    find_req.attributes[24 + strlen(chatname) + strlen(usrname)] = lowpart & 0xFF;
+
    
-   
+
     u_int16_t Value_size = 0;
    
    find_req.message_length = htons(sizeof(find_req.attributes));

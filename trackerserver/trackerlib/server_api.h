@@ -23,10 +23,23 @@ struct ci
 };
 typedef struct ci client_info;
 
-void make_find_res(SERV_MSG find_req);
+struct si
+{
+    uint8_t server_addr[4];
+    int16_t server_port;
+    char *chatroom; 
+    char *usrname;
+    client_info* clients;
+};
+typedef struct si server_info;
+
+void make_find_res(SERV_MSG find_req, int client_sockfd);
+int does_client_exist(SERV_MSG find_req,int i,uint8_t temp_add[],int16_t port);
 
 void make_alloc_res(SERV_MSG alloc_req,int client_sockfd);
 int canbe_server(SERV_MSG alloc_req,int i,char *chatname,uint8_t temp_add[],int16_t port);
+
+void process_req(SERV_MSG req,char *chatname, char *usrname,char let,uint8_t temp_add[] ,int chatnamelen);
 
 
 #endif
