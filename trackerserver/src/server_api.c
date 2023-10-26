@@ -9,6 +9,7 @@
 
 // make hash tables
 server_info servers[1000];
+int activeServers = 0;
 
 void make_alloc_res(SERV_MSG alloc_req,int client_sockfd)
 {
@@ -29,7 +30,6 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd)
    int backlog = alloc_req.attributes[19 + chatnamelen + usrnamelen];
 
    process_req(alloc_req,chatname,usrname,let,temp_add,chatnamelen);
-
    
    for(int i = 0; i < sizeof(servers) / sizeof(servers[0]); i++)
    {
@@ -39,19 +39,28 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd)
       if(cs == 1)
       {
          break;
+      }
+      if(servers[i].server_port == 0)
+      {
+        for(int j = 0; j < 4; j++)
+        {
+         servers[i].server_addr[j] = temp_add[j];
+        }
+        servers[i].server_port = port;
+        servers[i].chatroom = chatname;
+        servers[i].usrname = usrname;
+        servers[i].backlog = backlog;
+        servers[i].activeClients = 0;
+        servers[i].clients = (struct ci*)malloc(backlog * sizeof(struct ci));;
+
+        free(servers[i].clients);
+
+        activeServers++;
+        
+        break; 
       }    
   
-      for(int j = 0; j < 4; j++)
-      {
-         servers[i].server_addr[j] = temp_add[j];
-      }
-      servers[i].server_port = port;
-      servers[i].chatroom = chatname;
-      servers[i].usrname = usrname;
-      servers[i].clients = (struct ci*)malloc(backlog * sizeof(struct ci));;
-
       
-      break; 
    }
 
    close(client_sockfd);
@@ -65,7 +74,7 @@ int canbe_server(SERV_MSG alloc_req,int i,char *chatname,uint8_t temp_add[],int1
         {
             if(strcmp(ss,chatname) == 0)
             {
-                printf("\nThis room name is taken");
+                printf("\n This room name is taken");
                 return 1;
             }
         }
@@ -99,57 +108,91 @@ void make_find_res(SERV_MSG find_req,int client_sockfd)
   uint8_t transcid[12];
    memcpy(transcid,find_req.trasaction_id,sizeof(find_req.trasaction_id));
 
-   int16_t server_port = ntohs(*(int16_t*)(&find_req.attributes[7]));  
+   int16_t client_port = ntohs(*(int16_t*)(&find_req.attributes[7]));  
    char *chatname = malloc(13);
    char *client_usrname = malloc(13);
 
    char let;
-   uint8_t server_add[4];
    uint8_t client_add[4];
+   
+   uint8_t server_add[4];
+   int16_t server_port;
 
    int chatnamelen = find_req.attributes[14];
    int usrnamelen = find_req.attributes[16 + chatnamelen];
 
-   process_req(find_req,chatname,client_usrname,let,server_add,chatnamelen);
-
-   int16_t client_port = ntohs(*(int16_t*)(&find_req.attributes[19 + chatnamelen + usrnamelen]));
+   process_req(find_req,chatname,client_usrname,let,client_add,chatnamelen);
    
-   for(int i = 21 + chatnamelen + usrnamelen; i < 25 + chatnamelen + usrnamelen; i++)
+   for(int i = 0; i < activeServers ; i++)
    {
-      uint8_t addrindx = find_req.attributes[i];
-      client_add[i - (21 + chatnamelen + usrnamelen)] = addrindx;
+        servers[i].activeClients++;
+        
+        if(strcmp(servers[i].chatroom,chatname) == 0)
+        {
+              for(int j = 0; j < servers[i].activeClients ; j++)
+              {
+                    int ds = does_client_exist(find_req,i,j,client_add,client_port);
+
+                    if(ds != 0)
+                    {
+                        printf("Client is already connected");
+                        servers[i].activeClients--;
+                        goto jump;
+                    }
+
+                    if( servers[i].clients[j].client_port != 0 )
+                    {
+                        for(int k = 0; k < 4; k++)
+                        {
+                            servers[i].clients[j].client_addr[k] = client_add[k];
+                            server_add[k] = servers[i].server_addr[k];
+                        }
+                        server_port = servers[i].server_port;
+                        servers[i].clients[j].client_port = client_port;
+                        servers[i].clients[j].chatroom = chatname;
+                        servers[i].clients[j].usrname = client_usrname;
+                        break;
+                    }
+              }
+        }      
    }
+   SERV_MSG response;
+   response.message_type = 0x03;
+   memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
+   response.attributes[1] = 0x02;
+   response.attributes[7] = (server_port >> 8) & 0xFF;
+   response.attributes[8] = server_port & 0xFF;
+   response.attributes[9] =  server_add[1];
+   response.attributes[10] = server_add[0];
+   response.attributes[11] = server_add[3];
+   response.attributes[12] = server_add[2];
 
-   for(int i = 0; i < sizeof(servers->clients) / sizeof(servers->clients[0]); i++)
-   {
-      int dce = does_client_exist(find_req,i,client_add,client_port);
+   u_int16_t Value_size = 0;
+   
+   find_req.message_length = htons(sizeof(find_req.attributes));
+   find_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
 
-      printf("%d\n",dce);
-      fflush(stdout);
-      if(dce == 1)
-      {
-         break;
-      }    
+   send(client_sockfd,&response,sizeof(response),0);
 
-      
-      break; 
-   }
+   goto jump;
+
+   jump:
+        close(client_sockfd);
 }
 
-int does_client_exist(SERV_MSG find_req,int i,uint8_t temp_add[],int16_t port)
+int does_client_exist(SERV_MSG find_req,int i,int k ,uint8_t temp_add[],int16_t port)
 {
         int aresameIPs;
         int aresamePorts = 1;
         for(int j = 0; j < 4; j++)
         {
             aresameIPs = 1;
-            printf("%d",servers[i].clients[j].client_port);
             
-            if(temp_add[j] != servers[i].clients[i].client_addr[j] )
+            if(temp_add[j] != servers[i].clients[k].client_addr[j] )
             {
                 return 0;
             }
-            if(port == servers[i].clients[i].client_port)
+            if(port == servers[i].clients[k].client_port)
             {
                 aresamePorts = 0;
             }

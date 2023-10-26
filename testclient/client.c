@@ -56,13 +56,13 @@ int main(){
     struct sm find_req;
     bzero(&find_req,sizeof(find_req));
 
-    find_req.message_type = 0x02;
+    find_req.message_type = 0x01;
     for(int i = 0; i < sizeof(find_req.trasaction_id) / sizeof(find_req.trasaction_id[0]); i++)
     {
         find_req.trasaction_id[i] = rand() % 256;
     }
 
-    find_req.attributes[1] = 0x01;
+    find_req.attributes[1] = 0x02;
     
     int16_t port = 0x31FF;
    find_req.attributes[7] = (port >> 8) & 0xFF;
@@ -93,16 +93,8 @@ int main(){
       a = (int)let;
       find_req.attributes[i] = a;
    }
-   find_req.attributes[18 + strlen(chatname) + strlen(usrname)] = 0x11;
-   find_req.attributes[19 + strlen(chatname) + strlen(usrname)] = 0xA;
-//    find_req.attributes[18 + strlen(chatname) + strlen(usrname)] = 0x03;
-//    find_req.attributes[19 + strlen(chatname) + strlen(usrname)] = 0x4B;
-//    find_req.attributes[20 + strlen(chatname) + strlen(usrname)] = 0x66;
-//    find_req.attributes[21 + strlen(chatname) + strlen(usrname)] = (highpart >> 8) & 0xFF;
-//    find_req.attributes[22 + strlen(chatname) + strlen(usrname)] = highpart & 0xFF;
-//    find_req.attributes[23 + strlen(chatname) + strlen(usrname)] = (lowpart >> 8) & 0xFF;
-//    find_req.attributes[24 + strlen(chatname) + strlen(usrname)] = lowpart & 0xFF;
-
+//    find_req.attributes[18 + strlen(chatname) + strlen(usrname)] = 0x11;
+//    find_req.attributes[19 + strlen(chatname) + strlen(usrname)] = 0xA;
    
 
     u_int16_t Value_size = 0;
@@ -111,6 +103,11 @@ int main(){
    find_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
 
    send(sockfd,&find_req,sizeof(find_req),0);
+
+   struct sm response;
+   recv(sockfd,&response,sizeof(response),0);
+   printf("0x%02X",response.attributes[7]);
+   printf("0x%02X",response.attributes[8]);
 
    close(sockfd);
 
