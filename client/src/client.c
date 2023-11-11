@@ -9,15 +9,33 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <time.h>
 #include "client_api.h"
 
 int main()
 {
+    const char *ip = get_public_ip();
+    char temp[17];
+    strcpy(temp,ip);
+
+    free(ip);
+    uint8_t client_ipadd[4];
+    // Returns first token
+    char* token = strtok(temp, ".");
+ 
+    // Keep printing tokens while one of the
+    // delimiters present in str[].
+    int i = 0;
+    while (token != NULL) {
+        client_ipadd[i] = atoi(token);
+        i++;
+        token = strtok(NULL, ".");
+    }
+    free(token);
+
+
+
     int sockfd;
     struct sockaddr_in client_addr, server_addr;
-    time_t t;
-    srand((unsigned)time(&t));
 
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
@@ -34,13 +52,24 @@ int main()
     server_addr.sin_port = htons(19302);
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
+
     int conn;
 
     if ((conn = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr))) < 0)
     {
         printf("\n Connection to server failed! Exiting ...");
+        exit(EXIT_FAILURE);
     }
+
+    char roomname[13];
+    fgets(roomname,sizeof(roomname),stdin);
+
     CLIENT_MSG req;
+
+    make_find_req(req,sockfd,roomname,"Franta",client_ipadd);
+
+
+
     //     printf("\n Last error was: %s", strerror(errno));
     //     exit(EXIT_FAILURE);
     // }

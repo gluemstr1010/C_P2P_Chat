@@ -14,7 +14,8 @@ struct cm
 };
 typedef struct cm CLIENT_MSG;
 
-void make_find_req(CLIENT_MSG find_req, int serverfd);
-void make_alloc_req(CLIENT_MSG alloc_req, int serverfd);
+const char* get_public_ip();
+void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], uint8_t client_ipadd[]);
+void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char username[], uint8_t client_ipadd[],int backlog);
 
 #endif
