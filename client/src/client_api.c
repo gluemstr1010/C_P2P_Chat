@@ -18,7 +18,7 @@ size_t WriteData(void *contents, size_t size, size_t nmemb, void *userp)
     return total_size;
 }
 
-const char* get_public_ip()
+char* get_public_ip()
 {
     CURL *curl_handle;
     CURLcode res;
@@ -65,10 +65,10 @@ void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char userna
     find_req.attributes[7] = 0x7A;
     find_req.attributes[8] = 0x31;   // what port is open will  be made later
 
-    find_req.attributes[9] = client_ipadd[0];
-    find_req.attributes[10] = client_ipadd[1];
-    find_req.attributes[11] = client_ipadd[2];
-    find_req.attributes[12] = client_ipadd[3];
+    find_req.attributes[9] = client_ipadd[1];
+    find_req.attributes[10] = client_ipadd[0];
+    find_req.attributes[11] = client_ipadd[3];
+    find_req.attributes[12] = client_ipadd[2];
 
     find_req.attributes[13] = 0x02;
     find_req.attributes[14] = strlen(roomname);
@@ -103,7 +103,7 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
     {
         alloc_req.trasaction_id[i] = rand() % 256;
     }
-    alloc_req.attributes[1] = 0x01;
+    alloc_req.attributes[1] = 0x02;
 
     alloc_req.attributes[7] = 0x7A;
     alloc_req.attributes[8] = 0x31;   // what port is open will  be made later
@@ -141,5 +141,11 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
        alloc_req.message_length = htons(sizeof(alloc_req.attributes));
        alloc_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
     
+
     send(clientfd,&alloc_req,sizeof(alloc_req),0);
+}
+
+void prcess_find_resp(CLIENT_MSG resp)
+{
+
 }

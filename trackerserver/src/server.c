@@ -65,6 +65,7 @@ int main()
         int client_sockfd = accept(server_sockfd, (struct sockaddr*)&client_addr, &addr_size);
         recv(client_sockfd,&req,sizeof(req),0);
 
+        
         if(req.message_type == 0x01)
         {
             make_find_res(req,client_sockfd);

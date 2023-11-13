@@ -11,24 +11,39 @@
 #include <errno.h>
 #include "client_api.h"
 
+void process_resp(CLIENT_MSG resp)
+{
+         char *ms = malloc(15);
+        int l = resp.attributes[3];
+        char let;
+        for (int i = 4; i < 4 + l; i++)
+        {
+            let = (char)resp.attributes[i];
+            ms[i - (4)] = let;
+        }
+        printf("%s\n", ms);
+        free(ms);
+}
+
 int main()
 {
-    const char *ip = get_public_ip();
+    char *ip = malloc(20);
+    strcpy(ip,get_public_ip());
+    
     char temp[17];
     strcpy(temp,ip);
 
     free(ip);
     uint8_t client_ipadd[4];
-    // Returns first token
-    char* token = strtok(temp, ".");
+    
+    char* token = strtok(temp,".");
  
-    // Keep printing tokens while one of the
-    // delimiters present in str[].
+    
     int i = 0;
     while (token != NULL) {
         client_ipadd[i] = atoi(token);
         i++;
-        token = strtok(NULL, ".");
+        token = strtok(NULL,".");
     }
     free(token);
 
@@ -61,12 +76,43 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+    printf("Enter room name:");
     char roomname[13];
     fgets(roomname,sizeof(roomname),stdin);
 
-    CLIENT_MSG req;
+    printf("\nEnter username name:");
+    char username[13];
+    fgets(username,sizeof(username),stdin);
 
-    make_find_req(req,sockfd,roomname,"Franta",client_ipadd);
+    CLIENT_MSG req;
+    bzero(&req,sizeof(req));
+
+    make_alloc_req(req,sockfd,roomname,username,client_ipadd,10);
+    
+    // make_find_req(req,sockfd,roomname,username,client_ipadd);
+
+    CLIENT_MSG resp;
+
+    recv(sockfd, &resp, sizeof(resp), 0);
+
+     char *ms = malloc(15);
+        int l = resp.attributes[3];
+        char let;
+        for (int i = 4; i < 4 + l; i++)
+        {
+            let = (char)resp.attributes[i];
+            ms[i - (4)] = let;
+        }
+        printf("%s\n", ms);
+        free(ms);
+
+    // int16_t porrrt = ntohs(*(int16_t*)(&resp.attributes[7]));
+    // printf("\n%d",porrrt);
+    // printf("\n%d",resp.attributes[9]);
+    // printf("\n%d",resp.attributes[10]);
+    // printf("\n%d",resp.attributes[11]);
+    // printf("\n%d",resp.attributes[12]);
+    
 
 
 

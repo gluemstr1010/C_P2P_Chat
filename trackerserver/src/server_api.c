@@ -30,7 +30,7 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd)
    int backlog = alloc_req.attributes[19 + chatnamelen + usrnamelen];
 
    process_req(alloc_req,chatname,usrname,let,temp_add,chatnamelen);
-   
+   SERV_MSG resp;
    for(int i = 0; i < sizeof(servers) / sizeof(servers[0]); i++)
    {
       int cs = canbe_server(alloc_req,i,chatname,temp_add,port);
@@ -38,6 +38,21 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd)
       fflush(stdout);
       if(cs == 1)
       {
+        bzero(&resp,sizeof(resp));
+        resp.message_type = 0x04;
+         memcpy(resp.trasaction_id,transcid,sizeof(resp.trasaction_id));
+         resp.attributes[1] = 0x04;
+         char let;
+         int a;
+         char errmsg[] = "roomname or ip already exists";
+         resp.attributes[3] = strlen(errmsg);
+         for(int i = 4; i < 4 + strlen(errmsg); i++  )
+         {
+             let = errmsg[i - 4];
+            a = (int)let;
+            resp.attributes[i] = a;
+         }
+        send(client_sockfd,&resp,sizeof(resp),0);
          break;
       }
       if(servers[i].server_port == 0)
@@ -51,10 +66,36 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd)
         servers[i].usrname = usrname;
         servers[i].backlog = backlog;
         servers[i].activeClients = 0;
-        servers[i].clients = (struct ci*)malloc(backlog * sizeof(struct ci));;
+        servers[i].clients = (struct ci*)malloc(backlog * sizeof(struct ci));
+
+        printf("0x%02X",servers[i].server_port);
+        printf("\n%s",servers[i].chatroom);
+        printf("\n%s",servers[i].usrname);
+        printf("\n%d",servers[i].backlog);
+        printf("\n%d",servers[i].server_addr[0]);
+        printf("\n%d",servers[i].server_addr[1]);
+        printf("\n%d",servers[i].server_addr[2]);
+        printf("\n%d",servers[i].server_addr[3]);
+        fflush(stdout);
 
         activeServers++;
-        
+
+        bzero(&resp,sizeof(resp));
+        resp.message_type = 0x03;
+        memcpy(resp.trasaction_id,transcid,sizeof(resp.trasaction_id));
+        resp.attributes[1] = 0x03;
+        char let;
+         int a;
+         char succmsg[] = "Server addded";
+         resp.attributes[3] = strlen(succmsg);
+         for(int i = 4; i < 4 + strlen(succmsg); i++  )
+         {
+             let = succmsg[i - 3];
+            a = (int)let;
+            resp.attributes[4] = a;
+         }
+        send(client_sockfd,&resp,sizeof(resp),0);
+
         break; 
       }    
   
@@ -159,9 +200,9 @@ void make_find_res(SERV_MSG find_req,int client_sockfd)
         }      
    }
    SERV_MSG response;
-   response.message_type = 0x03;
+   response.message_type = 0x05;
    memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
-   response.attributes[1] = 0x02;
+   response.attributes[1] = 0x05;
    response.attributes[7] = (server_port >> 8) & 0xFF;
    response.attributes[8] = server_port & 0xFF;
    response.attributes[9] =  server_add[1];
@@ -172,7 +213,6 @@ void make_find_res(SERV_MSG find_req,int client_sockfd)
    u_int16_t Value_size = 0;
    
    find_req.message_length = htons(sizeof(find_req.attributes));
-   find_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
 
    send(client_sockfd,&response,sizeof(response),0);
 
@@ -181,15 +221,15 @@ void make_find_res(SERV_MSG find_req,int client_sockfd)
 
    jump:
         SERV_MSG err_resp;
-        err_resp.message_type = 0x04;
+        err_resp.message_type = 0x06;
         memcpy(err_resp.trasaction_id,transcid,sizeof(err_resp.trasaction_id));
-        err_resp.attributes[1] = 0x08;
+        err_resp.attributes[1] = 0x06;
         char err_msg[15] = "address_exists";
-        err_resp.attributes[7] = strlen(chatname);
+        err_resp.attributes[3] = strlen(chatname);
         int a;
-        for(int i = 8 ; i < 8 + strlen(chatname); i++ )
+        for(int i = 4 ; i < 4 + strlen(chatname); i++ )
         {
-            let = err_msg[i - 8];
+            let = err_msg[i - 4];
             a = (int)let;
             err_resp.attributes[i] = a;
         }
