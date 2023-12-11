@@ -6,50 +6,12 @@
 #include <uchar.h>
 #include <time.h>
 #include <curl/curl.h>
+#include <errno.h>
 #include "client_api.h"
 
-size_t WriteData(void *contents, size_t size, size_t nmemb, void *userp)
-{
-    size_t total_size = size * nmemb;
-    char *output_buffer = (char *)userp;
+#define PACKETSTOSEND 10
 
-    strcat(output_buffer, (char *)contents);
-
-    return total_size;
-}
-
-char* get_public_ip()
-{
-    CURL *curl_handle;
-    CURLcode res;
- 
-     curl_global_init(CURL_GLOBAL_ALL);
-    curl_handle = curl_easy_init();
-    if (curl_handle) {
-        curl_easy_setopt(curl_handle, CURLOPT_URL, "https://api.ipify.org");
-        char output_buffer[20]; 
-        output_buffer[0] = '\0'; 
-        curl_easy_setopt(curl_handle,CURLOPT_WRITEFUNCTION,WriteData);
-        curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, output_buffer);
-        res = curl_easy_perform(curl_handle);
- 
-        if (res != CURLE_OK) {
-            printf("Error: %s\n", curl_easy_strerror(res));
-            return NULL;
-        }
-
-        char *temp = malloc(20);
-        temp = output_buffer;
-        return temp;
- 
-        curl_easy_cleanup(curl_handle);
-    }
- 
-    curl_global_cleanup();
-    return NULL;
-}
-
-void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], uint8_t client_ipadd[])
+void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len)
 {
     bzero(&find_req, sizeof(find_req));
      time_t t;
@@ -62,15 +24,7 @@ void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char userna
     }
     find_req.attributes[1] = 0x01;
 
-    find_req.attributes[7] = 0x7A;
-    find_req.attributes[8] = 0x31;   // what port is open will  be made later
-
-    find_req.attributes[9] = client_ipadd[1];
-    find_req.attributes[10] = client_ipadd[0];
-    find_req.attributes[11] = client_ipadd[3];
-    find_req.attributes[12] = client_ipadd[2];
-
-    find_req.attributes[13] = 0x02;
+    find_req.attributes[13] = 0x01;
     find_req.attributes[14] = strlen(roomname);
     
     char let;
@@ -87,12 +41,17 @@ void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char userna
 
      find_req.message_length = htons(sizeof(find_req.attributes));
      find_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
-    
-    send(clientfd,&find_req,sizeof(find_req),0);
+
+   int hh = sendto(clientfd,&find_req,sizeof(find_req),MSG_WAITALL,(struct sockaddr*)&address,address_len);
+   if( hh < 0)
+   {
+      printf("\n Last error was: %s",strerror(errno));
+      fflush(stdout);
+   }
     
 }
 
-void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char username[], uint8_t client_ipadd[], int backlog)
+void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char username[], int backlog, struct sockaddr_in address, int address_len)
 {
     bzero(&alloc_req, sizeof(alloc_req));
     time_t t;
@@ -104,14 +63,6 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
         alloc_req.trasaction_id[i] = rand() % 256;
     }
     alloc_req.attributes[1] = 0x02;
-
-    alloc_req.attributes[7] = 0x7A;
-    alloc_req.attributes[8] = 0x31;   // what port is open will  be made later
-
-    alloc_req.attributes[9] = client_ipadd[0];
-    alloc_req.attributes[10] = client_ipadd[1];
-    alloc_req.attributes[11] = client_ipadd[2];
-    alloc_req.attributes[12] = client_ipadd[3];
 
     alloc_req.attributes[13] = 0x02;
     alloc_req.attributes[14] = strlen(roomname);
@@ -142,10 +93,18 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
        alloc_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
     
 
-    send(clientfd,&alloc_req,sizeof(alloc_req),0);
+        sendto(clientfd,&alloc_req,sizeof(alloc_req),MSG_WAITALL,(struct sockaddr*)&address,address_len);
 }
 
-void prcess_find_resp(CLIENT_MSG resp)
+void refresh_NAT_entry(CLIENT_MSG msg,int clientfd, struct sockaddr_in address, int address_len)
 {
-
+    msg.message_type = 0x88;
+    for(int i = 0; i < PACKETSTOSEND; i++)
+    {
+        if(sendto(clientfd,&msg,sizeof(msg),0,(struct sockaddr*)&address,address_len) < 0)
+        {
+            printf("\n Last error was: %s",strerror(errno));
+            fflush(stdout);
+        }
+    }
 }

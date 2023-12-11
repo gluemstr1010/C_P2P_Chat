@@ -11,13 +11,13 @@
 #include <errno.h>
 #include "server_api.h"
 
-#define PORT 19302
+#define PORT 21504
 
 int main()
 {
     int server_sockfd;
 
-    if( (server_sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0 )
+    if( (server_sockfd = socket(AF_INET,SOCK_DGRAM,0)) < 0 )
     {
         printf("\n Socket creation failed! Exiting ...");
         printf("\n Last error was: %s",strerror(errno));
@@ -39,16 +39,6 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    // client_info servr_arr[1000];
-    // client_info clients_arr[1000];
-
-    if( listen(server_sockfd, 2) < 0 )
-    {
-        printf("\n Server failed when tried to listen! Exiting ...");
-        printf("\n Last error was: %s",strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
     
     printf("\n Waiting for incoming connections ...");
     fflush(stdout);
@@ -58,23 +48,37 @@ int main()
 
     SERV_MSG req;
     
+    u_int16_t port;
+    char sourceIP[INET_ADDRSTRLEN];
     while(true)
     {
          bzero(&req,sizeof(req));
          bzero(&client_addr,sizeof(client_addr));
-        int client_sockfd = accept(server_sockfd, (struct sockaddr*)&client_addr, &addr_size);
-        recv(client_sockfd,&req,sizeof(req),0);
+         bzero(&port,sizeof(port));
+         bzero(&sourceIP,sizeof(sourceIP));
+  
+        // int client_sockfd = accept(server_sockfd, (struct sockaddr*)&client_addr, &addr_size);
+        conn = recvfrom(server_sockfd,&req ,sizeof(req),0,(struct sockaddr*)&client_addr,&addr_size);
+        
+        if(conn > 0)
+        {
+            port = ntohs(client_addr.sin_port);
+        inet_ntop(AF_INET, &(client_addr.sin_addr), sourceIP, INET_ADDRSTRLEN);
+
+        // recv(client_sockfd,&req,sizeof(req),0);
 
         
         if(req.message_type == 0x01)
         {
-            make_find_res(req,client_sockfd);
+            make_find_res(req,server_sockfd,sourceIP,port,client_addr,addr_size);
         }
 
         if(req.message_type == 0x02)
         {
-            make_alloc_res(req,client_sockfd);
+            make_alloc_res(req,server_sockfd,sourceIP,port,client_addr,addr_size);
         }
+        }
+        
 
     }
     

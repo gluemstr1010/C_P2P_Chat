@@ -14,18 +14,21 @@ struct cm
 };
 typedef struct cm CLIENT_MSG;
 
-// struct si
-// {
-//     uint8_t client_addr[4];
-//     int16_t client_port;
-//     char *chatroom; 
-//     char *usrname;
-//     client_info* clients;
-// };
+struct si
+{
+    uint8_t client_addr[4];
+    uint16_t client_port;
+    char *chatroom; 
+    char *usrname;
+};
+typedef struct si CLIENT; 
 
 char* get_public_ip();
-void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], uint8_t client_ipadd[]);
-void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char username[], uint8_t client_ipadd[],int backlog);
+void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len );
+void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char username[],int backlog, struct sockaddr_in address, int address_len);
+
+void refresh_NAT_enty(CLIENT_MSG msg,int clientfd,struct sockaddr_in address, int address_len);
+
 void prcess_find_resp(CLIENT_MSG find_res);
 
 #endif

@@ -9,12 +9,14 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <sys/time.h>
 #include "client_api.h"
 
-void process_resp(CLIENT_MSG resp)
+
+void process_err_resp(CLIENT_MSG resp)
 {
-         char *ms = malloc(15);
         int l = resp.attributes[3];
+        char *ms = malloc(l);
         char let;
         for (int i = 4; i < 4 + l; i++)
         {
@@ -22,59 +24,71 @@ void process_resp(CLIENT_MSG resp)
             ms[i - (4)] = let;
         }
         printf("%s\n", ms);
+        fflush(stdout);
         free(ms);
+}
+
+void client_stage(CLIENT_MSG resp , CLIENT **clients ,int clientfd, struct sockaddr_in address, int address_len )
+{
+
+    if(resp.message_type == 0x06)
+    {
+        process_err_resp(resp);
+    }else if(resp.message_type == 0x05)
+    {
+        if(resp.attributes[1] == 0x05)
+        {
+            CLIENT client;
+            
+        }
+    }
+}
+
+void roomserver_stage(CLIENT_MSG resp ,int clientfd, struct sockaddr_in address, int address_len)
+{
+    if(resp.message_type == 0x04)
+    {
+        process_err_resp(resp);
+        exit(EXIT_FAILURE);
+    }else if(resp.message_type != 0x03)
+    {
+        // 
+         exit(EXIT_FAILURE);
+    }
 }
 
 int main()
 {
-    char *ip = malloc(20);
-    strcpy(ip,get_public_ip());
-    
-    char temp[17];
-    strcpy(temp,ip);
-
-    free(ip);
-    uint8_t client_ipadd[4];
-    
-    char* token = strtok(temp,".");
- 
-    
-    int i = 0;
-    while (token != NULL) {
-        client_ipadd[i] = atoi(token);
-        i++;
-        token = strtok(NULL,".");
-    }
-    free(token);
-
-
 
     int sockfd;
     struct sockaddr_in client_addr, server_addr;
+    struct timeval timeout;
+    timeout.tv_sec = 5;
+    timeout.tv_usec = 0;
 
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
         printf("Socket failed lol");
     }
 
     bzero(&client_addr, sizeof(client_addr));
     client_addr.sin_family = AF_INET;
-    client_addr.sin_port = htons(12780);
+    client_addr.sin_port = htons(12800);
     client_addr.sin_addr.s_addr = INADDR_ANY;
 
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(19302);
+    server_addr.sin_port = htons(21504);
     server_addr.sin_addr.s_addr = INADDR_ANY;
-
+    socklen_t addrsize;
 
     int conn;
 
-    if ((conn = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr))) < 0)
-    {
-        printf("\n Connection to server failed! Exiting ...");
-        exit(EXIT_FAILURE);
-    }
+     printf("Enter 1 for client, 2 for creating room:");
+    short choice;
+    scanf("%hd",&choice);
+
+    fgetc(stdin);
 
     printf("Enter room name:");
     char roomname[13];
@@ -85,40 +99,32 @@ int main()
     fgets(username,sizeof(username),stdin);
 
     CLIENT_MSG req;
-    bzero(&req,sizeof(req));
-
-    make_alloc_req(req,sockfd,roomname,username,client_ipadd,10);
-    
-    // make_find_req(req,sockfd,roomname,username,client_ipadd);
-
     CLIENT_MSG resp;
+    bzero(&req,sizeof(req));
+    bzero(&resp,sizeof(resp));
+    int len = sizeof(server_addr);
 
-    recv(sockfd, &resp, sizeof(resp), 0);
+    CLIENT *clients;
 
-     char *ms = malloc(15);
-        int l = resp.attributes[3];
-        char let;
-        for (int i = 4; i < 4 + l; i++)
-        {
-            let = (char)resp.attributes[i];
-            ms[i - (4)] = let;
-        }
-        printf("%s\n", ms);
-        free(ms);
+    if(choice == 1)
+    {
+        make_find_req(req,sockfd,roomname,username,server_addr,len);
+         conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
+         int bcklg = resp.attributes[14];
+         clients = (CLIENT *)malloc(bcklg * sizeof(CLIENT));
+         client_stage(resp,&clients,sockfd,server_addr,len);
+    }
+    else if(choice == 2)
+    {
+        make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);
+        conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
+        roomserver_stage(resp,sockfd,server_addr,len);
 
-    // int16_t porrrt = ntohs(*(int16_t*)(&resp.attributes[7]));
-    // printf("\n%d",porrrt);
-    // printf("\n%d",resp.attributes[9]);
-    // printf("\n%d",resp.attributes[10]);
-    // printf("\n%d",resp.attributes[11]);
-    // printf("\n%d",resp.attributes[12]);
+    }else
+    {
+        exit(EXIT_FAILURE);
+    }
     
-
-
-
-    //     printf("\n Last error was: %s", strerror(errno));
-    //     exit(EXIT_FAILURE);
-    // }
 
     // struct sm find_req;
     // bzero(&find_req, sizeof(find_req));

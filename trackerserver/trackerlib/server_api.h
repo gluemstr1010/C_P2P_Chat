@@ -17,7 +17,7 @@ typedef struct sm SERV_MSG;
 struct ci
 {
     uint8_t client_addr[4];
-    int16_t client_port;
+    uint16_t client_port;
     char *chatroom; 
     char *usrname;
 };
@@ -26,7 +26,7 @@ typedef struct ci client_info;
 struct si
 {
     uint8_t server_addr[4];
-    int16_t server_port;
+    uint16_t server_port;
     char *chatroom; 
     char *usrname;
     int backlog;
@@ -35,13 +35,15 @@ struct si
 };
 typedef struct si server_info;
 
-void make_find_res(SERV_MSG find_req, int client_sockfd);
-int does_client_exist(SERV_MSG find_req,int i,int k,uint8_t temp_add[],int16_t port);
+void make_find_res(SERV_MSG find_req, int serv_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, int address_len);
 
-void make_alloc_res(SERV_MSG alloc_req,int client_sockfd);
+void make_alloc_res(SERV_MSG alloc_req,int serv_sockfd, char* sourceIP, u_int16_t port, struct sockaddr_in address, int address_len);
 int canbe_server(SERV_MSG alloc_req,int i,char *chatname,uint8_t temp_add[],int16_t port);
 
-void process_req(SERV_MSG req,char *chatname, char *usrname,char let,uint8_t temp_add[] ,int chatnamelen);
+void sendtoclientserver(int servsockfd ,uint16_t port,uint8_t server_add[],struct sockaddr_in address, int address_len);
+void process_req(SERV_MSG req,char *chatname, char *usrname,char let,int chatnamelen);
+
+uint8_t* process_srcIP(char* srcIP,uint8_t client_ipadd[]);
 
 
 #endif
