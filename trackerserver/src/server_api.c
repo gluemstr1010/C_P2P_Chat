@@ -181,17 +181,41 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
    {    
         if(strcmp(servers[i].chatroom,chatname) == 0)
         {   
+            bzero(&response,sizeof(response));
+            for(int s = 0; s < 4; s++)
+            {
+                server_add[s] = servers[i].server_addr[s];
+            }
+            servers[i].backlog = server_backlog;
 
-              for(int j = 0; j <= servers[i].activeClients ; j++)
-              {
+             response.message_type = 0x05;
+            memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
+            response.attributes[1] = 0x55;
+            response.attributes[7] = (server_port >> 8) & 0xFF;
+            response.attributes[8] = server_port & 0xFF;
+            response.attributes[9] =  server_add[1];
+            response.attributes[10] = server_add[0];
+            response.attributes[11] = server_add[3];
+            response.attributes[12] = server_add[2];
+            response.attributes[13] = 0x05;
+            response.attributes[14] = server_backlog;
 
+            u_int16_t Value_size = 0;
+        
+             response.message_length = sizeof(response.attributes);
+
+                response.attributes[3] = ( Value_size >> 8 ) & 0xFF;
+                response.attributes[4] = Value_size & 0xFF;
+
+            sendto(client_sockfd,&response,sizeof(response),0,(struct sockaddr*)&address,address_len);
+                for(int j = 0; j <= servers[i].activeClients ; j++)
+                {
                     if( servers[i].clients[j].client_port == 0 )
                     {
                        
                         for(int k = 0; k < 4; k++)
                         {
                             servers[i].clients[j].client_addr[k] = client_add[k];
-                            server_add[k] = servers[i].server_addr[k];
                         }
                         server_port = servers[i].server_port;
 
@@ -200,8 +224,6 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
                         servers[i].clients[j].chatroom = chatname;
                         servers[i].clients[j].usrname = client_usrname;
                         servers[i].activeClients++;
-                        servers[i].backlog = server_backlog;
-
                         
                         printf("\n%d",servers[i].clients[j].client_addr[0]);
                         printf("%d",servers[i].clients[j].client_addr[1]);
@@ -213,6 +235,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
                         err = 1;
                         break;
                     }
+                    sleep(3);
                     if (servers[i].clients[j].client_port != 0)
                     {
                          bzero(&response,sizeof(response));
@@ -241,37 +264,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
 
               }
         }      
-   }
-
-   if(err == 1)
-   {
-     bzero(&response,sizeof(response));
-        response.message_type = 0x05;
-        memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
-        response.attributes[1] = 0x55;
-        response.attributes[7] = (server_port >> 8) & 0xFF;
-        response.attributes[8] = server_port & 0xFF;
-        response.attributes[9] =  server_add[1];
-        response.attributes[10] = server_add[0];
-        response.attributes[11] = server_add[3];
-        response.attributes[12] = server_add[2];
-        response.attributes[13] = 0x05;
-        response.attributes[14] = server_backlog;
-
-        u_int16_t Value_size = 0;
-        
-        find_req.message_length = htons(sizeof(find_req.attributes));
-
-            int j = sendto(client_sockfd,&response,sizeof(response),MSG_WAITALL,(struct sockaddr*)&address,address_len);
-            if(j < 0)
-            {
-                printf("\n Last error was: %s",strerror(errno));
-                fflush(stdout);
-            }
-            fflush(stdout);
-            //  sendtoclientserver(client_sockfd,server_port,server_add,address,address_len);  
-   }
-        
+   }    
 
    if(err == 0)
    {

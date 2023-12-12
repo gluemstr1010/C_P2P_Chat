@@ -28,24 +28,37 @@ void process_err_resp(CLIENT_MSG resp)
         free(ms);
 }
 
-void client_stage(CLIENT_MSG resp , CLIENT **clients ,int clientfd, struct sockaddr_in address, int address_len )
+void client_stage(CLIENT_MSG resp , CLIENT **clients ,int clientfd, struct sockaddr_in address, socklen_t addrsize )
 {
+       struct timeval recvtimeout;      
+    recvtimeout.tv_sec = 5;
+    recvtimeout.tv_usec = 0;
+
 
     if(resp.message_type == 0x06)
     {
         process_err_resp(resp);
     }else if(resp.message_type == 0x05)
     {
-        if(resp.attributes[1] == 0x05)
+        if(resp.attributes[1] == 0x55)
         {
-            CLIENT client;
+            if(setsockopt(clientfd,SOL_SOCKET,SO_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0)
+            {
+                printf("\n Error when setiing timeout, exiting...");
+                exit(EXIT_FAILURE);
+            }
+            bzero(&resp,sizeof(resp));
+            recvfrom(clientfd,&resp,sizeof(resp),0,(struct sockaddr*)&address, &addrsize);
             
+            // recieve active client adresses from server
         }
     }
 }
 
 void roomserver_stage(CLIENT_MSG resp ,int clientfd, struct sockaddr_in address, int address_len)
 {
+ 
+
     if(resp.message_type == 0x04)
     {
         process_err_resp(resp);
@@ -112,7 +125,7 @@ int main()
          conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
          int bcklg = resp.attributes[14];
          clients = (CLIENT *)malloc(bcklg * sizeof(CLIENT));
-         client_stage(resp,&clients,sockfd,server_addr,len);
+         client_stage(resp,&clients,sockfd,server_addr,addrsize);
     }
     else if(choice == 2)
     {

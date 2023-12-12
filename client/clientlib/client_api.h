@@ -23,7 +23,6 @@ struct si
 };
 typedef struct si CLIENT; 
 
-char* get_public_ip();
 void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len );
 void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char username[],int backlog, struct sockaddr_in address, int address_len);
 
