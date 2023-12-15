@@ -158,6 +158,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
    char *client_usrname = malloc(13);
 
    char let;
+   int a;
    uint8_t client_add[4];
 
    process_srcIP(sourceIP,client_add);
@@ -186,19 +187,32 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
             {
                 server_add[s] = servers[i].server_addr[s];
             }
-            servers[i].backlog = server_backlog;
+            server_port = servers[i].server_port;
+             server_backlog = servers[i].backlog;
 
              response.message_type = 0x05;
             memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
             response.attributes[1] = 0x55;
             response.attributes[7] = (server_port >> 8) & 0xFF;
             response.attributes[8] = server_port & 0xFF;
-            response.attributes[9] =  server_add[1];
-            response.attributes[10] = server_add[0];
-            response.attributes[11] = server_add[3];
-            response.attributes[12] = server_add[2];
+            response.attributes[9] =  server_add[0];
+            response.attributes[10] = server_add[1];
+            response.attributes[11] = server_add[2];
+            response.attributes[12] = server_add[3];
             response.attributes[13] = 0x05;
             response.attributes[14] = server_backlog;
+            response.attributes[15] = 0x05;
+            u_int8_t usernamelen = strlen(servers[i].usrname);
+            response.attributes[16] = usernamelen;
+            char tempusrnem[usernamelen];
+            strcpy(tempusrnem,servers[i].usrname);
+            for(int i = 17; i < 16 + usernamelen; i++)
+            {
+                let = tempusrnem[i - 17];
+                a = (int)let;
+                response.attributes[i] = a;
+            }
+
 
             u_int16_t Value_size = 0;
         
@@ -206,8 +220,9 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
 
                 response.attributes[3] = ( Value_size >> 8 ) & 0xFF;
                 response.attributes[4] = Value_size & 0xFF;
-
-            sendto(client_sockfd,&response,sizeof(response),0,(struct sockaddr*)&address,address_len);
+            sleep(5);
+            int cc = sendto(client_sockfd,&response,sizeof(response),0,(struct sockaddr*)&address,address_len);
+            fflush(stdout);
                 for(int j = 0; j <= servers[i].activeClients ; j++)
                 {
                     if( servers[i].clients[j].client_port == 0 )
@@ -217,7 +232,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
                         {
                             servers[i].clients[j].client_addr[k] = client_add[k];
                         }
-                        server_port = servers[i].server_port;
+                        
 
 
                         servers[i].clients[j].client_port = port;
@@ -225,17 +240,17 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
                         servers[i].clients[j].usrname = client_usrname;
                         servers[i].activeClients++;
                         
-                        printf("\n%d",servers[i].clients[j].client_addr[0]);
-                        printf("%d",servers[i].clients[j].client_addr[1]);
-                        printf("%d",servers[i].clients[j].client_addr[2]);
-                        printf("%d",servers[i].clients[j].client_addr[3]);
-                        printf(":%d",servers[i].clients[j].client_port);
-                        fflush(stdout);
+                        // printf("\n%d",servers[i].clients[j].client_addr[0]);
+                        // printf("%d",servers[i].clients[j].client_addr[1]);
+                        // printf("%d",servers[i].clients[j].client_addr[2]);
+                        // printf("%d",servers[i].clients[j].client_addr[3]);
+                        // printf(":%d",servers[i].clients[j].client_port);
+                        // fflush(stdout);
                         
                         err = 1;
                         break;
                     }
-                    sleep(3);
+                    sleep(4);
                     if (servers[i].clients[j].client_port != 0)
                     {
                          bzero(&response,sizeof(response));
