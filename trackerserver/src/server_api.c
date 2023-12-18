@@ -259,10 +259,21 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
                         response.attributes[1] = 0x05;
                         response.attributes[7] = (servers[i].clients[j].client_port >> 8) & 0xFF;
                         response.attributes[8] = servers[i].clients[j].client_port & 0xFF;
-                        response.attributes[9] =  servers[i].clients[j].client_addr[1];
-                        response.attributes[10] = servers[i].clients[j].client_addr[0];
-                        response.attributes[11] = servers[i].clients[j].client_addr[3];
-                        response.attributes[12] = servers[i].clients[j].client_addr[2];
+                        response.attributes[9] =  servers[i].clients[j].client_addr[0];
+                        response.attributes[10] = servers[i].clients[j].client_addr[1];
+                        response.attributes[11] = servers[i].clients[j].client_addr[2];
+                        response.attributes[12] = servers[i].clients[j].client_addr[3];
+                         response.attributes[15] = 0x05;
+                        u_int8_t clientusernamelen = strlen(servers[i].clients[j].usrname);
+                        response.attributes[16] = clientusernamelen;
+                        char tempusrnem[clientusernamelen];
+                        strcpy(tempusrnem,servers[i].clients[j].usrname);
+                        for(int i = 17; i < 16 + clientusernamelen; i++)
+                        {
+                            let = tempusrnem[i - 17];
+                            a = (int)let;
+                            response.attributes[i] = a;
+                        }
 
                         u_int16_t Value_size = 0;
                         

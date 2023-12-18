@@ -37,6 +37,14 @@ void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char userna
         find_req.attributes[i] = a;
     }
 
+    find_req.attributes[16 + strlen(roomname)] = strlen(username);
+    for (int i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(username); i++)
+    {
+        let = username[i - (17 + strlen(roomname))];
+        a = (int)let;
+        find_req.attributes[i] = a;
+    }
+
     u_int16_t Value_size = 0;
 
      find_req.message_length = htons(sizeof(find_req.attributes));

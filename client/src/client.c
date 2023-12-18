@@ -28,7 +28,7 @@ void process_err_resp(CLIENT_MSG resp)
         free(ms);
 }
 
-void client_stage(CLIENT_MSG resp , CLIENT **clients, int arrclientlen ,int clientfd,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
+void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clientfd,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
 {
        struct timeval recvtimeout;      
     recvtimeout.tv_sec = 10;
@@ -46,13 +46,13 @@ void client_stage(CLIENT_MSG resp , CLIENT **clients, int arrclientlen ,int clie
         
         if(resp.attributes[1] == 0x55)
         {
-            (*clients)[0].client_addr[0] = resp.attributes[9];
-            (*clients)[0].client_addr[1] = resp.attributes[10];
-            (*clients)[0].client_addr[2] = resp.attributes[11];
-            (*clients)[0].client_addr[3] = resp.attributes[12];
+            clients[0].client_addr[0] = resp.attributes[9];
+            clients[0].client_addr[1] = resp.attributes[10];
+            clients[0].client_addr[2] = resp.attributes[11];
+            clients[0].client_addr[3] = resp.attributes[12];
 
-             p = ntohs(*(int16_t *)(&resp.attributes[7]));
-            (*clients)[0].client_port = p;
+             p = ntohs(*(uint16_t *)(&resp.attributes[7]));
+            clients[0].client_port = p;
             
             char a;
             int usrnemlen = resp.attributes[16];
@@ -63,10 +63,10 @@ void client_stage(CLIENT_MSG resp , CLIENT **clients, int arrclientlen ,int clie
                   tempusrnem[ i - 17 ] = a;
             }
             
-            (*clients)[0].usrname = (char *)malloc( usrnemlen );
-            (*clients)[0].chatroom = (char *)malloc(roomname_len);
-            strcpy((*clients)[0].usrname,tempusrnem);
-            strcpy((*clients)[0].chatroom,roomname);
+            clients[0].usrname = (char *)malloc( usrnemlen );
+            clients[0].chatroom = (char *)malloc(roomname_len);
+            strcpy(clients[0].usrname,tempusrnem);
+            strcpy(clients[0].chatroom,roomname);
 
 
             if(setsockopt(clientfd,SOL_SOCKET,SO_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0)
@@ -99,36 +99,40 @@ void client_stage(CLIENT_MSG resp , CLIENT **clients, int arrclientlen ,int clie
                    
                 }
 
-                if(clients[i] == NULL)
+                printf("\n%d - cport",clients[i].client_port);
+                printf("\n%d - i",i);                    
+                if(clients[i].client_port == 0 )
                 {
-                    printf("\n Memory allocation failed");
-                    exit(EXIT_FAILURE); 
-                }
-
-                if((*clients)[i].client_port == 0 )
-                {
-                    printf("asdf");
-                    (*clients)[i].client_addr[0] = resp.attributes[9];
-                    (*clients)[i].client_addr[1] = resp.attributes[10];
-                    (*clients)[i].client_addr[2] = resp.attributes[11];
-                    (*clients)[i].client_addr[3] = resp.attributes[12];
-
-                     p = ntohs(*(int16_t *)(&resp.attributes[7]));
-                    (*clients)[i].client_port = p;
                     
+                    clients[i].client_addr[0] = resp.attributes[9];
+                    clients[i].client_addr[1] = resp.attributes[10];
+                    clients[i].client_addr[2] = resp.attributes[11];
+                    clients[i].client_addr[3] = resp.attributes[12];
+
+                     p = ntohs(*(uint16_t *)(&resp.attributes[7]));
+                    clients[i].client_port = p;
+
+                    printf("\n ip bgn - %d",resp.attributes[9]);
+                    printf("%d",resp.attributes[10]);
+                    printf("%d",resp.attributes[11]);
+                    printf("%d::",resp.attributes[12]);
+                    printf("%d",p);
+                    fflush(stdout);
+
                     char a;
-                    int usrnemlen = resp.attributes[16];
-                    char tempusrnem[ usrnemlen ];
-                    for(int i = 17; i < 16 + usrnemlen; i++)
+                    int clientusrnemlen = resp.attributes[16];
+                    char tempclientusrnem[ clientusrnemlen ];
+                    for(int i = 17; i < 16 + clientusrnemlen; i++)
                     {
                         a = (char)resp.attributes[i];
-                        tempusrnem[ i - 17 ] = a;
+                        tempclientusrnem[ i - 17 ] = a;
                     }
+                    printf("\n%s",tempclientusrnem);
                     
-                    (*clients)[i].usrname = (char *)malloc( usrnemlen );
-                    (*clients)[i].chatroom = (char *)malloc(roomname_len);
-                    strcpy((*clients)[i].usrname,tempusrnem);
-                    strcpy((*clients)[i].chatroom,roomname);
+                    clients[i].usrname = (char *)malloc( usrnemlen );
+                    clients[i].chatroom = (char *)malloc(roomname_len);
+                    strcpy(clients[i].usrname,tempclientusrnem);
+                    strcpy(clients[i].chatroom,roomname);
                 }
 
                 i++;
@@ -239,33 +243,23 @@ int main()
          conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
          int bcklg = resp.attributes[14];
          pom = bcklg;
-         CLIENT *clients[bcklg];     
-         for(int i = 0; i < bcklg; i++)
-         {
-            clients[i] = malloc(sizeof(CLIENT));
-            if(clients[i] == NULL)
-            {
-                printf("\nMemory allocation failed");
-                free(clients);
-                exit(EXIT_FAILURE);
-            }
-         }
+         CLIENT clients[bcklg];
+         bzero(&clients,sizeof(clients));     
          client_stage(resp,clients,bcklg,sockfd,roomname,strlen(roomname),server_addr,addrsize);
 
-         for(int i = 0; i < pom - 1; i++)
-        {
-            if(clients[i]->client_port != 0)
-            {
-                printf("%s",clients[i]->usrname);
-                printf("\n%d",clients[i]->client_addr[0]);
-                printf("%d",clients[i]->client_addr[1]);
-                printf("%d",clients[i]->client_addr[2]);
-                printf("%d::",clients[i]->client_addr[3]);
-                printf("%d",clients[i]->client_port);
-                printf("\n");
-            }
-                
-        }
+        //  for(int i = 0; i < bcklg -1 ; i++)
+        //  {
+            
+        //         printf("\n%s",clients[i].usrname);
+        //         printf("\n%d",clients[i].client_addr[0]);
+        //         printf("%d",clients[i].client_addr[1]);
+        //         printf("%d",clients[i].client_addr[2]);
+        //         printf("%d::",clients[i].client_addr[3]);
+        //         printf("%d",clients[i].client_port);
+        //         printf("\n");
+        //         fflush(stdout);
+            
+        //  }
     }
     else if(choice == 2)
     {
@@ -277,7 +271,6 @@ int main()
     {
         exit(EXIT_FAILURE);
     }
-    
     
 
     // struct sm find_req;
