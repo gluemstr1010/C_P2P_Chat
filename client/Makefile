@@ -1,4 +1,4 @@
-GCC_FLAGS=-g -Wall 
+GCC_FLAGS=-g -Wall -Wshadow -Wextra
 LIBS=-lcurl
 
 
