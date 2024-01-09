@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <pthread.h>
 #include "client_api.h"
 
 
@@ -171,20 +172,20 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
     }
 }
 
-void roomserver_stage(CLIENT_MSG resp ,int clientfd, struct sockaddr_in address, int address_len)
-{
+// void roomserver_stage(CLIENT_MSG resp ,int clientfd, struct sockaddr_in address, int address_len)
+// {
  
 
-    if(resp.message_type == 0x04)
-    {
-        process_err_resp(resp);
-        exit(EXIT_FAILURE);
-    }else if(resp.message_type != 0x03)
-    {
-        // 
-         exit(EXIT_FAILURE);
-    }
-}
+//     if(resp.message_type == 0x04)
+//     {
+//         process_err_resp(resp);
+//         exit(EXIT_FAILURE);
+//     }else if(resp.message_type != 0x03)
+//     {
+//         // 
+//          exit(EXIT_FAILURE);
+//     }
+// }
 
 int main()
 {
@@ -202,13 +203,15 @@ int main()
 
     bzero(&client_addr, sizeof(client_addr));
     client_addr.sin_family = AF_INET;
-    client_addr.sin_port = htons(12800);
+    client_addr.sin_port = htons(19452);
     client_addr.sin_addr.s_addr = INADDR_ANY;
 
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(21504);
     server_addr.sin_addr.s_addr = INADDR_ANY;
+    // inet_pton(AF_INET,"78.80.195.234",&(server_addr.sin_addr));    
+
     socklen_t addrsize;
 
     int conn;
@@ -265,12 +268,33 @@ int main()
     {
         make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);
         conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
-        roomserver_stage(resp,sockfd,server_addr,len);
 
     }else
     {
         exit(EXIT_FAILURE);
     }
+    
+
+    pthread_t refreshNatEntryThread;
+    CLIENT_MSG msg;
+
+    struct RefreshThreadParams rtp = {
+        .msg = msg,
+        .clientfd = sockfd,
+        .address = server_addr,
+        .address_len = len
+    };
+
+    if (pthread_create(&refreshNatEntryThread, NULL,refresh_NAT_entry,(void*)&rtp) != 0) {
+        perror("Thread creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pthread_join(refreshNatEntryThread, NULL) != 0) {
+        perror("Thread join failed");
+        exit(EXIT_FAILURE);
+    }
+
     
 
     // struct sm find_req;

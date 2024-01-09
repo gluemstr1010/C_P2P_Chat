@@ -27,7 +27,7 @@ int main()
     struct sockaddr_in server_addr;
     bzero(&server_addr,sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);  // Bind at port 19302
+    server_addr.sin_port = htons(PORT);  // Bind at port 21504
     server_addr.sin_addr.s_addr = INADDR_ANY; // Bind to any incoming address
 
     int conn;
@@ -66,11 +66,15 @@ int main()
         inet_ntop(AF_INET, &(client_addr.sin_addr), sourceIP, INET_ADDRSTRLEN);
 
         // recv(client_sockfd,&req,sizeof(req),0);
-
+         char *chatname = malloc(13);
+        char *client_usrname = malloc(13);
+        char let;
         
         if(req.message_type == 0x01)
         {
             make_find_res(req,server_sockfd,sourceIP,port,client_addr,addr_size);
+            process_req(req,chatname,client_usrname,let,req.attributes[14]);
+            broadcast_new_client(sourceIP,port,client_usrname,chatname);
         }
 
         if(req.message_type == 0x02)

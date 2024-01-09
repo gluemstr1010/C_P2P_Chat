@@ -10,6 +10,7 @@
 #include "client_api.h"
 
 #define PACKETSTOSEND 10
+#define REFRESH_INTERVAL 60
 
 void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len)
 {
@@ -101,18 +102,28 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
        alloc_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
     
 
-        sendto(clientfd,&alloc_req,sizeof(alloc_req),MSG_WAITALL,(struct sockaddr*)&address,address_len);
+      sendto(clientfd,&alloc_req,sizeof(alloc_req),MSG_WAITALL,(struct sockaddr*)&address,address_len);
 }
 
-void refresh_NAT_entry(CLIENT_MSG msg,int clientfd, struct sockaddr_in address, int address_len)
+void refresh_NAT_entry(void* arg)
 {
-    msg.message_type = 0x88;
-    for(int i = 0; i < PACKETSTOSEND; i++)
+    struct RefreshThreadParams* params = (struct RefreshThreadParams*)arg;
+
+    params->msg.message_type = 0x88;
+    while(1)
     {
-        if(sendto(clientfd,&msg,sizeof(msg),0,(struct sockaddr*)&address,address_len) < 0)
+        for(int i = 0; i < PACKETSTOSEND; i++)
         {
-            printf("\n Last error was: %s",strerror(errno));
+            int q;
+            if((q = sendto(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&params->address,params->address_len)) <= 0)
+            {
+                printf("\n Last error was: %s",strerror(errno));
+                fflush(stdout);
+            }
+            printf("send this much %d\n",q);
             fflush(stdout);
+            sleep(REFRESH_INTERVAL);
         }
     }
+    
 }

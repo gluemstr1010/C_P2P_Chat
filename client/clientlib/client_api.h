@@ -21,12 +21,19 @@ struct si
     char *chatroom; 
     char *usrname;
 };
-typedef struct si CLIENT; 
+typedef struct si CLIENT;
+
+struct RefreshThreadParams {
+    CLIENT_MSG msg;
+    int clientfd;
+    struct sockaddr_in address;
+    int address_len;
+};
 
 void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len );
 void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char username[],int backlog, struct sockaddr_in address, int address_len);
 
-void refresh_NAT_enty(CLIENT_MSG msg,int clientfd,struct sockaddr_in address, int address_len);
+void refresh_NAT_entry(void* arg);
 
 void prcess_find_resp(CLIENT_MSG find_res);
 

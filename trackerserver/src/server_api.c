@@ -375,3 +375,78 @@ void sendtoclientserver(int servsockfd ,uint16_t port,uint8_t server_add[],struc
 
     sendto(servsockfd,&msg,sizeof(msg),MSG_WAITALL,(struct sockaddr*)&address,address_len);
 }
+
+void broadcast_new_client(char* sourceIP, u_int16_t port,char *usrname, char *roomname){
+    struct sockaddr_in activeCLient;
+    socklen_t addr_size;
+    addr_size = sizeof(activeCLient);
+
+    uint8_t new_client[4];
+
+    process_srcIP(sourceIP,new_client);
+
+    SERV_MSG msg;
+    msg.message_type = 0x11;
+    msg.attributes[7] = (port >> 8) & 0xFF;
+    msg.attributes[8] = port & 0xFF;
+     msg.attributes[9] = new_client[1];
+    msg.attributes[10] = new_client[0];
+    msg.attributes[11] = new_client[2];   
+    msg.attributes[12] = new_client[3];
+    msg.attributes[13] = 0x11;
+    msg.attributes[14] = strlen(roomname);
+    char let;
+    int a;
+
+    for(int i = 15; i < 14 + strlen(roomname); i++)
+    {
+        let = roomname[i - 15];
+        a = (int)let;
+        msg.attributes[i] = a;
+    }
+
+    msg.attributes[16 + strlen(roomname)] = strlen(usrname);
+    for (int i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(usrname); i++)
+    {
+        let = usrname[i - (17 + strlen(roomname))];
+        a = (int)let;
+        msg.attributes[i] = a;
+    }
+
+    for (int i = 0; i < sizeof(msg.trasaction_id) / sizeof(msg.trasaction_id[0]); i++)
+    {
+        msg.trasaction_id[i] = rand() % 256;
+    }
+
+    for(int i = 0; i < sizeof(servers) / sizeof(servers[0]); i++)
+    {
+        for(int j = 0; j < servers[i].activeClients ; j++)
+        {
+            bzero(&activeCLient,sizeof(activeCLient));
+            activeCLient.sin_port = servers[i].clients[j].client_port;
+            char *ipaddress = convert_IP_tochar(servers[i].clients[j].client_addr);
+            
+        }
+    }
+}
+
+char* convert_IP_tochar(uint8_t ipadd[])
+{
+    char *ip = malloc(17);
+    char temp[17];
+
+    uint8_t a;
+    char let;
+
+    for(int i = 0; i < 4; i++)
+    {
+        a = ipadd[i];
+        let = (char)a;
+        printf("\n%d",a);
+        fflush(stdout);
+        temp[i] = let;   
+    }
+    
+    strcpy(ip,temp);
+    return ip;
+}
