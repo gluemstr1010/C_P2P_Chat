@@ -425,7 +425,8 @@ void broadcast_new_client(char* sourceIP, u_int16_t port,char *usrname, char *ro
             bzero(&activeCLient,sizeof(activeCLient));
             activeCLient.sin_port = servers[i].clients[j].client_port;
             char *ipaddress = convert_IP_tochar(servers[i].clients[j].client_addr);
-            
+            printf("\n%s",ipaddress);
+            fflush(stdout);
         }
     }
 }
@@ -434,19 +435,27 @@ char* convert_IP_tochar(uint8_t ipadd[])
 {
     char *ip = malloc(17);
     char temp[17];
+    char pom[33];
+    bzero(&temp,sizeof(temp));
+    bzero(&pom,sizeof(pom));
 
-    uint8_t a;
+
     char let;
-
-    for(int i = 0; i < 4; i++)
+    int k = 0;
+    for (int i = 0; i < 4; i++)
     {
-        a = ipadd[i];
-        let = (char)a;
-        printf("\n%d",a);
-        fflush(stdout);
-        temp[i] = let;   
+        // k = 10 * k + ipadd[i];
+        int a = ipadd[i];
+        sprintf(temp,"%d",a);
+        
+        if(i < 3)
+        {
+            strcat(temp,".");
+        }
+
+        strcat(pom,temp);
     }
-    
-    strcpy(ip,temp);
+
+    strcpy(ip,pom);
     return ip;
 }
