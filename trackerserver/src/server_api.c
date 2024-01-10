@@ -445,7 +445,6 @@ char* convert_IP_tochar(uint8_t ipadd[])
     int k = 0;
     for (int i = 0; i < 4; i++)
     {
-        // k = 10 * k + ipadd[i];
         int a = ipadd[i];
         sprintf(temp,"%d",a);
         

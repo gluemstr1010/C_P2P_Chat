@@ -212,12 +212,27 @@ void life_cycle(int sockfd,struct sockaddr_in server_addr, CLIENT clients[], int
         .address_len = len
     };
 
+    pthread_t sendThread;
+    CLIENT_MSG messageHolder;
+     bzero(&messageHolder,sizeof(messageHolder));
+    struct SendThreadParams stp = {
+        .msg = messageHolder,
+        .clientfd = sockfd,
+        .clients = clients,
+        .arrsize = bcklog
+    };
+
     if (pthread_create(&UpdateThread, NULL,&listen_for_Update,(void*)&ut) != 0) {
         perror("Thread creation failed");
         exit(EXIT_FAILURE);
     }
 
-     if (pthread_create(&refreshNatEntryThread, NULL,&refresh_NAT_entry,(void*)&rtp) != 0) {
+    if (pthread_create(&refreshNatEntryThread, NULL,&refresh_NAT_entry,(void*)&rtp) != 0) {
+        perror("Thread creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+     if (pthread_create(&sendThread, NULL,&send_msg,(void*)&stp) != 0) {
         perror("Thread creation failed");
         exit(EXIT_FAILURE);
     }
@@ -231,6 +246,12 @@ void life_cycle(int sockfd,struct sockaddr_in server_addr, CLIENT clients[], int
         perror("Thread join failed");
         exit(EXIT_FAILURE);
     }
+
+    if (pthread_join(sendThread, NULL) != 0) {
+        perror("Thread join failed");
+        exit(EXIT_FAILURE);
+    }
+
 }
 
 int main()

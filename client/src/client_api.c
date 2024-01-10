@@ -182,6 +182,8 @@ void* listen_for_Update(void* arg)
                         tempusrnem[ i - (17 + roomnamelen) ] = a;
                     }
 
+                    params->clients[i].usrname = (char *)malloc( usrnemlen );
+                    params->clients[i].chatroom = (char *)malloc(roomnamelen);
                     strcpy(params->clients[i].chatroom,temproomname);
                     strcpy(params->clients[i].usrname,tempusrnem);
                    
@@ -189,8 +191,96 @@ void* listen_for_Update(void* arg)
                 }
             }
         }
+
+        if(params->msg.message_type == 0x76)
+        {
+            int msglen = params->msg.attributes[1];
+            char let;
+            char mesg[msglen];
+            bzero(&mesg,sizeof(msglen));
+            for(int i = 2; i < 2 + msglen; i++)
+            {
+                 let = (char)params->msg.attributes[i];
+                 mesg[i] = let;
+            }
+            printf("\n%s",mesg);
+        }
+
         bzero(&params->msg,sizeof(params->msg));
         fflush(stdout);
     }
     
+}
+
+char* convert_IP_tochar(uint8_t ipadd[])
+{
+    char *ip = malloc(17);
+    char temp[17];
+    char pom[33];
+    bzero(&temp,sizeof(temp));
+    bzero(&pom,sizeof(pom));
+
+
+    char let;
+    int k = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        int a = ipadd[i];
+        sprintf(temp,"%d",a);
+        
+        if(i < 3)
+        {
+            strcat(temp,".");
+        }
+
+        strcat(pom,temp);
+    }
+
+    strcpy(ip,pom);
+    return ip;
+}
+
+void* send_msg(void* arg)
+{
+     struct SendThreadParams* params = (struct UpdateThreadParams*)arg;
+     struct sockaddr_in client;
+    while(1)
+    {
+        bzero(&params->msg,sizeof(params->msg));
+        char msg[20];
+        printf("\n Send message:");
+        fflush(stdout);
+        fgets(msg,sizeof(msg),stdin);
+
+        params->msg.message_type = 0x76;
+        for (int i = 0; i < sizeof(params->msg.trasaction_id) / sizeof(params->msg.trasaction_id[0]); i++)
+        {
+            params->msg.trasaction_id[i] = rand() % 256;
+        }
+        params->msg.attributes[1] = strlen(msg);
+        char let;
+        int a;
+
+        for(int i = 2; i < 2 + strlen(msg); i++)
+        {
+            let = msg[i - 2];
+            a = (int)let;
+            params->msg.attributes[i] = a;
+        }
+
+        for(int i = 0; i < params->arrsize; i++)
+        {
+            if(params->clients[i].chatroom != NULL)
+            {
+                 bzero(&client,sizeof(client));
+                client.sin_family = AF_INET;
+                client.sin_port = htons(params->clients[i].client_port);
+                inet_pton(AF_INET,convert_IP_tochar(params->clients[i].client_addr),&(client.sin_addr));
+                sendto(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&client,sizeof(client));
+                perror("sendto");
+            }
+        }
+
+        fgetc(stdin);
+    }
 }
