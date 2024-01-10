@@ -105,7 +105,7 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
       sendto(clientfd,&alloc_req,sizeof(alloc_req),MSG_WAITALL,(struct sockaddr*)&address,address_len);
 }
 
-void refresh_NAT_entry(void* arg)
+void* refresh_NAT_entry(void* arg)
 {
     struct RefreshThreadParams* params = (struct RefreshThreadParams*)arg;
 
@@ -124,6 +124,73 @@ void refresh_NAT_entry(void* arg)
             fflush(stdout);
             sleep(REFRESH_INTERVAL);
         }
+    }
+}
+
+void* listen_for_Update(void* arg)
+{
+    struct UpdateThreadParams* params = (struct UpdateThreadParams*)arg;
+    int j;
+    socklen_t sz = sizeof(params->address);
+     struct timeval recvtimeout;      
+    recvtimeout.tv_sec = 0;
+    recvtimeout.tv_usec = 100000;
+
+    if(setsockopt( params->clientfd,SOL_SOCKET,SO_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0)
+    {
+                printf("\n Error when setiing timeout, exiting...");
+                exit(EXIT_FAILURE);
+    }
+
+    while (1)
+    {
+        j = recvfrom(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&params->address,&sz);
+        // if( ( <= 0 )
+        // {
+        //     printf("\n Last error was: %s",strerror(errno));
+        //     fflush(stdout);
+        // }
+
+        if(params->msg.message_type == 0x11)
+        {
+            for(int i = 0; i < params->arrsize; i++)
+            {
+                if(params->clients[i].chatroom == NULL)
+                {
+                    for(int k = 9; k < 12; k++)
+                    {
+                        params->clients[i].client_addr[k-9] = params->msg.attributes[k];
+                    }
+                    params->clients[i].client_port = ntohs(*(uint16_t *)(&params->msg.attributes[7]));
+                    
+                    char a;
+                    int roomnamelen = params->msg.attributes[14];
+                    char temproomname[ roomnamelen ];
+                    bzero(&temproomname,sizeof(temproomname));
+                    for(int i = 15; i < 15 + roomnamelen; i++)
+                    {
+                        a = (char)params->msg.attributes[i];
+                        temproomname[ i - 15 ] = a;
+                    }
+
+                    int usrnemlen = params->msg.attributes[16 + roomnamelen];
+                    char tempusrnem[ usrnemlen ];
+                    bzero(&tempusrnem,sizeof(tempusrnem));
+                    for(int i = 17 + roomnamelen; i < 17 + usrnemlen + roomnamelen; i++)
+                    {
+                        a = (char)params->msg.attributes[i];
+                        tempusrnem[ i - (17 + roomnamelen) ] = a;
+                    }
+
+                    strcpy(params->clients[i].chatroom,temproomname);
+                    strcpy(params->clients[i].usrname,tempusrnem);
+                   
+                    break;
+                }
+            }
+        }
+        bzero(&params->msg,sizeof(params->msg));
+        fflush(stdout);
     }
     
 }

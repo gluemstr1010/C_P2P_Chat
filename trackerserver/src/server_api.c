@@ -72,7 +72,6 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd, char* sourceIP, u_int1
         servers[i].activeClients = 0;
         servers[i].clients = (struct ci*)malloc(backlog * sizeof(struct ci));
 
-        
         printf("\n%s",servers[i].chatroom);
         printf("\n%s",servers[i].usrname);
         printf("\n%d",servers[i].backlog);
@@ -356,27 +355,7 @@ uint8_t* process_srcIP(char* srcIP,uint8_t client_ipadd[])
     return client_ipadd;
 }
 
-void sendtoclientserver(int servsockfd ,uint16_t port,uint8_t server_add[],struct sockaddr_in address, int address_len)
-{
-    SERV_MSG msg;
-    msg.message_type = 0x11;
-    for (int i = 0; i < sizeof(msg.trasaction_id) / sizeof(msg.trasaction_id[0]); i++)
-    {
-        msg.trasaction_id[i] = rand() % 256;
-    }
-
-    msg.attributes[1] = 0x11;
-    msg.attributes[7] = (port >> 8) & 0xFF;
-    msg.attributes[8] = port & 0xFF;
-    msg.attributes[9] = server_add[1];
-    msg.attributes[10] = server_add[0];
-    msg.attributes[11] = server_add[2];   
-    msg.attributes[12] = server_add[3];
-
-    sendto(servsockfd,&msg,sizeof(msg),MSG_WAITALL,(struct sockaddr*)&address,address_len);
-}
-
-void broadcast_new_client(char* sourceIP, u_int16_t port,char *usrname, char *roomname){
+void broadcast_new_client(int sockfd,char* sourceIP, u_int16_t port,char *usrname, char *roomname){
     struct sockaddr_in activeCLient;
     socklen_t addr_size;
     addr_size = sizeof(activeCLient);
@@ -387,6 +366,7 @@ void broadcast_new_client(char* sourceIP, u_int16_t port,char *usrname, char *ro
 
     SERV_MSG msg;
     msg.message_type = 0x11;
+    msg.attributes[1] = 0x11;
     msg.attributes[7] = (port >> 8) & 0xFF;
     msg.attributes[8] = port & 0xFF;
      msg.attributes[9] = new_client[1];
@@ -398,7 +378,7 @@ void broadcast_new_client(char* sourceIP, u_int16_t port,char *usrname, char *ro
     char let;
     int a;
 
-    for(int i = 15; i < 14 + strlen(roomname); i++)
+    for(int i = 15; i < 15 + strlen(roomname); i++)
     {
         let = roomname[i - 15];
         a = (int)let;
@@ -420,14 +400,35 @@ void broadcast_new_client(char* sourceIP, u_int16_t port,char *usrname, char *ro
 
     for(int i = 0; i < sizeof(servers) / sizeof(servers[0]); i++)
     {
-        for(int j = 0; j < servers[i].activeClients ; j++)
+        if(servers[i].chatroom != NULL)
         {
-            bzero(&activeCLient,sizeof(activeCLient));
-            activeCLient.sin_port = servers[i].clients[j].client_port;
-            char *ipaddress = convert_IP_tochar(servers[i].clients[j].client_addr);
-            printf("\n%s",ipaddress);
-            fflush(stdout);
+            if(strcmp(servers[i].chatroom,roomname) == 0)
+            {
+                bzero(&activeCLient,sizeof(activeCLient));
+                activeCLient.sin_family = AF_INET;
+                activeCLient.sin_port = htons(servers[i].server_port);
+                inet_pton(AF_INET,convert_IP_tochar(servers[i].server_addr),&(activeCLient.sin_addr));
+                    // inet_pton(AF_INET,"127.0.0.1",&(activeCLient.sin_addr)); 
+                    
+                int e = sendto(sockfd, &msg, sizeof(msg), 0,(struct sockaddr*)&activeCLient, sizeof(activeCLient));
+                    
+                for(int j = 0; j < servers[i].activeClients-1 ; j++)
+                {
+                    bzero(&activeCLient,sizeof(activeCLient));
+                    activeCLient.sin_family = AF_INET;
+                    activeCLient.sin_port = htons(servers[i].clients[j].client_port);
+                    inet_pton(AF_INET,convert_IP_tochar(servers[i].clients[j].client_addr),&(activeCLient.sin_addr));
+                    // inet_pton(AF_INET,"127.0.0.1",&(activeCLient.sin_addr)); 
+                
+                    
+                    int h = sendto(sockfd, &msg, sizeof(msg), 0,(struct sockaddr*)&activeCLient, sizeof(activeCLient));   
+                    
+                    printf("\n%d - c",h);
+                    fflush(stdout);
+                }
+            }
         }
+        
     }
 }
 

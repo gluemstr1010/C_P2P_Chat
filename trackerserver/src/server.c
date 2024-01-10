@@ -74,7 +74,7 @@ int main()
         {
             make_find_res(req,server_sockfd,sourceIP,port,client_addr,addr_size);
             process_req(req,chatname,client_usrname,let,req.attributes[14]);
-            broadcast_new_client(sourceIP,port,client_usrname,chatname);
+            broadcast_new_client(server_sockfd,sourceIP,port,client_usrname,chatname);
         }
 
         if(req.message_type == 0x02)

@@ -31,11 +31,17 @@ void process_err_resp(CLIENT_MSG resp)
 
 void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clientfd,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
 {
-       struct timeval recvtimeout;      
-    recvtimeout.tv_sec = 10;
-    recvtimeout.tv_usec = 0;
 
     int backlog = resp.attributes[14];
+    struct timeval recvtimeout;      
+    recvtimeout.tv_sec = 5;
+    recvtimeout.tv_usec = 0;
+
+    if(setsockopt( clientfd,SOL_SOCKET,SO_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0)
+    {
+                printf("\n Error when setiing timeout, exiting...");
+                exit(EXIT_FAILURE);
+    }
 
     uint16_t p;
 
@@ -68,14 +74,6 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
             clients[0].chatroom = (char *)malloc(roomname_len);
             strcpy(clients[0].usrname,tempusrnem);
             strcpy(clients[0].chatroom,roomname);
-
-
-            if(setsockopt(clientfd,SOL_SOCKET,SO_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0)
-            {
-                printf("\n Error when setiing timeout, exiting...");
-                exit(EXIT_FAILURE);
-            }
-            
             
             int i = 1;
              while(true)
@@ -187,14 +185,59 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
 //     }
 // }
 
+void life_cycle(int sockfd,struct sockaddr_in server_addr, CLIENT clients[], int bcklog)
+{
+     pthread_t UpdateThread;
+    CLIENT_MSG update;
+    bzero(&update,sizeof(update));
+    int len = sizeof(server_addr);
+
+    struct UpdateThreadParams ut = {
+        .msg = update,
+        .clientfd = sockfd,
+        .address = server_addr,
+        .address_len = len,
+        .clients = clients,
+        .arrsize = bcklog
+    };
+
+    pthread_t refreshNatEntryThread;
+    CLIENT_MSG msg;
+    bzero(&msg,sizeof(msg));
+
+    struct RefreshThreadParams rtp = {
+        .msg = msg,
+        .clientfd = sockfd,
+        .address = server_addr,
+        .address_len = len
+    };
+
+    if (pthread_create(&UpdateThread, NULL,&listen_for_Update,(void*)&ut) != 0) {
+        perror("Thread creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+     if (pthread_create(&refreshNatEntryThread, NULL,&refresh_NAT_entry,(void*)&rtp) != 0) {
+        perror("Thread creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pthread_join(UpdateThread, NULL) != 0) {
+        perror("Thread join failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pthread_join(refreshNatEntryThread, NULL) != 0) {
+        perror("Thread join failed");
+        exit(EXIT_FAILURE);
+    }
+}
+
 int main()
 {
 
     int sockfd;
     struct sockaddr_in client_addr, server_addr;
-    struct timeval timeout;
-    timeout.tv_sec = 5;
-    timeout.tv_usec = 0;
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
@@ -249,6 +292,7 @@ int main()
          CLIENT clients[bcklg];
          bzero(&clients,sizeof(clients));     
          client_stage(resp,clients,bcklg,sockfd,roomname,strlen(roomname),server_addr,addrsize);
+         life_cycle(sockfd,server_addr,clients,bcklg);
 
         //  for(int i = 0; i < bcklg -1 ; i++)
         //  {
@@ -266,32 +310,12 @@ int main()
     }
     else if(choice == 2)
     {
+        CLIENT clients[10];
         make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);
         conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
-
+        life_cycle(sockfd,server_addr,clients,10);
     }else
     {
-        exit(EXIT_FAILURE);
-    }
-    
-
-    pthread_t refreshNatEntryThread;
-    CLIENT_MSG msg;
-
-    struct RefreshThreadParams rtp = {
-        .msg = msg,
-        .clientfd = sockfd,
-        .address = server_addr,
-        .address_len = len
-    };
-
-    if (pthread_create(&refreshNatEntryThread, NULL,refresh_NAT_entry,(void*)&rtp) != 0) {
-        perror("Thread creation failed");
-        exit(EXIT_FAILURE);
-    }
-
-    if (pthread_join(refreshNatEntryThread, NULL) != 0) {
-        perror("Thread join failed");
         exit(EXIT_FAILURE);
     }
 
