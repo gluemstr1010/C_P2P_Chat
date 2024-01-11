@@ -157,7 +157,7 @@ void* listen_for_Update(void* arg)
             {
                 if(params->clients[i].chatroom == NULL)
                 {
-                    for(int k = 9; k < 12; k++)
+                    for(int k = 9; k < 13; k++)
                     {
                         params->clients[i].client_addr[k-9] = params->msg.attributes[k];
                     }
