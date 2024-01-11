@@ -200,21 +200,18 @@ void* listen_for_Update(void* arg)
         {
             int msglen = params->msg.attributes[1];
             char let;
-            char *mesg = (char *)malloc( msglen );
-            char tempmsg[msglen];
-            bzero(&mesg,sizeof(mesg));
-            bzero(&tempmsg,sizeof(tempmsg));
+            char *mesg = malloc(msglen + 1);
+            bzero(mesg,msglen);
             
             for(int i = 2; i < 2 + msglen; i++)
             {
                  let = (char)params->msg.attributes[i];
                  if(let != '\0')
                  {
-                    tempmsg[i] = let;
+                    mesg[i-2] = let;
                  }
             }
-            strcpy(mesg,"halo");
-            printf("\n%s - z",mesg);
+            printf("\n%s",mesg);
             fflush(stdout);
         }
 
@@ -227,6 +224,7 @@ void* listen_for_Update(void* arg)
 char* convert_IP_tochar(uint8_t ipadd[])
 {
     char *ip = malloc(17);
+    bzero(ip,17);
     char temp[17];
     char pom[33];
     bzero(&temp,sizeof(temp));
@@ -285,17 +283,29 @@ void* send_msg(void* arg)
         {
             if(params->clients[i].client_port != 0)
             {
-                printf("\n%d-p",params->clients[i].client_port);
-                fflush(stdout);
+                // printf("\n%d-p",params->clients[i].client_port);
+                // fflush(stdout);
                  bzero(&client,sizeof(client));
                 client.sin_family = AF_INET;
                 client.sin_port = htons(params->clients[i].client_port);
                 inet_pton(AF_INET,convert_IP_tochar(params->clients[i].client_addr),&(client.sin_addr));
                 int o = sendto(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&client,sizeof(client));
-                perror("sendto");
-                printf("\n%d",o);
-                 printf("\n Last error was: %s",strerror(errno));
-              fflush(stdout);
+
+                char ipAddress[INET_ADDRSTRLEN]; // INET_ADDRSTRLEN is the maximum size for IPv4 addresses
+
+                // Convert the binary IP address to a string
+                if (inet_ntop(AF_INET, &(client.sin_addr), ipAddress, INET_ADDRSTRLEN) == NULL) {
+                    perror("Error converting IP address to string");
+                }
+
+                // Print the IP address
+            //     printf("\nIP Address: %s\n", ipAddress);
+            //     printf("%u",client.sin_port);
+
+            //     perror("sendto");
+            //     printf("\n%d",o);
+            //      printf("\n Last error was: %s",strerror(errno));
+            //   fflush(stdout);
             }
         }
 

@@ -267,7 +267,7 @@ int main()
 
     bzero(&client_addr, sizeof(client_addr));
     client_addr.sin_family = AF_INET;
-    client_addr.sin_port = htons(12865);
+    client_addr.sin_port = htons(19302);
     client_addr.sin_addr.s_addr = INADDR_ANY;
 
     bzero(&server_addr, sizeof(server_addr));

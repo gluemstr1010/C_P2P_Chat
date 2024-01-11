@@ -105,7 +105,6 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd, char* sourceIP, u_int1
             printf("\n Last error was: %s",strerror(errno));
         }
         
-
         break; 
       }    
    }
@@ -153,7 +152,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
   uint8_t transcid[12];
    memcpy(transcid,find_req.trasaction_id,sizeof(find_req.trasaction_id));
   
-   char *chatname = malloc(13);
+   char *chtname = malloc(13);
    char *client_usrname = malloc(13);
 
    char let;
@@ -169,7 +168,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
    int chatnamelen = find_req.attributes[14];
    int usrnamelen = find_req.attributes[16 + chatnamelen];
 
-   process_req(find_req,chatname,client_usrname,let,chatnamelen);
+   process_req(find_req,chtname,client_usrname,let,chatnamelen);
 
     SERV_MSG response;
    char err_msg[30];
@@ -179,7 +178,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
    
    for(int i = 0; i < activeServers ; i++)
    {    
-        if(strcmp(servers[i].chatroom,chatname) == 0)
+        if(strcmp(servers[i].chatroom,chtname) == 0)
         {   
             bzero(&response,sizeof(response));
             for(int s = 0; s < 4; s++)
@@ -235,7 +234,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
 
 
                         servers[i].clients[j].client_port = port;
-                        servers[i].clients[j].chatroom = chatname;
+                        servers[i].clients[j].chatroom = chtname;
                         servers[i].clients[j].usrname = client_usrname;
                         servers[i].activeClients++;
                         
@@ -318,7 +317,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
             
             fflush(stdout);
    }
-        
+
 }
 
 void process_req(SERV_MSG req,char *chatname, char *usrname,char let ,int chatnamelen )
@@ -355,22 +354,22 @@ uint8_t* process_srcIP(char* srcIP,uint8_t client_ipadd[])
     return client_ipadd;
 }
 
-void broadcast_new_client(int sockfd,char* sourceIP, u_int16_t port,char *usrname, char *roomname){
+void broadcast_new_client(int sockfd, u_int16_t port,char *sourceaddr, char *usrname, char *roomname){
     struct sockaddr_in activeCLient;
     socklen_t addr_size;
     addr_size = sizeof(activeCLient);
 
     uint8_t new_client[4];
 
-    process_srcIP(sourceIP,new_client);
+    process_srcIP(sourceaddr,new_client);
 
     SERV_MSG msg;
     msg.message_type = 0x11;
     msg.attributes[1] = 0x11;
     msg.attributes[7] = (port >> 8) & 0xFF;
     msg.attributes[8] = port & 0xFF;
-     msg.attributes[9] = new_client[1];
-    msg.attributes[10] = new_client[0];
+     msg.attributes[9] = new_client[0];
+    msg.attributes[10] = new_client[1];
     msg.attributes[11] = new_client[2];   
     msg.attributes[12] = new_client[3];
     msg.attributes[13] = 0x11;
@@ -400,7 +399,7 @@ void broadcast_new_client(int sockfd,char* sourceIP, u_int16_t port,char *usrnam
 
     for(int i = 0; i < sizeof(servers) / sizeof(servers[0]); i++)
     {
-        if(servers[i].chatroom != NULL)
+        if(servers[i].server_port != 0)
         {
             if(strcmp(servers[i].chatroom,roomname) == 0)
             {

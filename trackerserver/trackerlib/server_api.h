@@ -36,7 +36,7 @@ struct si
 typedef struct si server_info;
 
 void make_find_res(SERV_MSG find_req, int serv_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, int address_len);
-void broadcast_new_client(int sockfd,char* sourceIP, u_int16_t port, char *usrname, char *roomname);
+void broadcast_new_client(int sockfd,u_int16_t port,char *sourceaddr, char *usrname, char *roomname);
 
 void make_alloc_res(SERV_MSG alloc_req,int serv_sockfd, char* sourceIP, u_int16_t port, struct sockaddr_in address, int address_len);
 int canbe_server(SERV_MSG alloc_req,int i,char *chatname,uint8_t temp_add[],int16_t port);

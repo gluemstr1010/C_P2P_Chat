@@ -1,4 +1,4 @@
-GCC_FLAGS=-g -Wall
+GCC_FLAGS=-g -Wall -Wextra
 
 TRCK_SRC_DIR=src/
 TRCK_OBJ_DIR = trackerobj/
