@@ -120,8 +120,8 @@ void* refresh_NAT_entry(void* arg)
                 printf("\n Last error was: %s",strerror(errno));
                 fflush(stdout);
             }
-            printf("send this much %d\n",q);
-            fflush(stdout);
+            // printf("\n send this much %d",q);
+            // fflush(stdout);
             sleep(REFRESH_INTERVAL);
         }
     }
@@ -191,19 +191,31 @@ void* listen_for_Update(void* arg)
                 }
             }
         }
-
+        if(params->msg.message_type != 0)
+        {
+            
+        }
+        
         if(params->msg.message_type == 0x76)
         {
             int msglen = params->msg.attributes[1];
             char let;
-            char mesg[msglen];
-            bzero(&mesg,sizeof(msglen));
+            char *mesg = (char *)malloc( msglen );
+            char tempmsg[msglen];
+            bzero(&mesg,sizeof(mesg));
+            bzero(&tempmsg,sizeof(tempmsg));
+            
             for(int i = 2; i < 2 + msglen; i++)
             {
                  let = (char)params->msg.attributes[i];
-                 mesg[i] = let;
+                 if(let != '\0')
+                 {
+                    tempmsg[i] = let;
+                 }
             }
-            printf("\n%s",mesg);
+            strcpy(mesg,"halo");
+            printf("\n%s - z",mesg);
+            fflush(stdout);
         }
 
         bzero(&params->msg,sizeof(params->msg));
@@ -257,7 +269,8 @@ void* send_msg(void* arg)
         {
             params->msg.trasaction_id[i] = rand() % 256;
         }
-        params->msg.attributes[1] = strlen(msg);
+        int len = sizeof(msg) / sizeof(msg[0]);
+        params->msg.attributes[1] = len;
         char let;
         int a;
 
@@ -270,14 +283,19 @@ void* send_msg(void* arg)
 
         for(int i = 0; i < params->arrsize; i++)
         {
-            if(params->clients[i].chatroom != NULL)
+            if(params->clients[i].client_port != 0)
             {
+                printf("\n%d-p",params->clients[i].client_port);
+                fflush(stdout);
                  bzero(&client,sizeof(client));
                 client.sin_family = AF_INET;
                 client.sin_port = htons(params->clients[i].client_port);
                 inet_pton(AF_INET,convert_IP_tochar(params->clients[i].client_addr),&(client.sin_addr));
-                sendto(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&client,sizeof(client));
+                int o = sendto(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&client,sizeof(client));
                 perror("sendto");
+                printf("\n%d",o);
+                 printf("\n Last error was: %s",strerror(errno));
+              fflush(stdout);
             }
         }
 

@@ -111,12 +111,12 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
                      p = ntohs(*(uint16_t *)(&resp.attributes[7]));
                     clients[i].client_port = p;
 
-                    printf("\n ip bgn - %d",resp.attributes[9]);
-                    printf("%d",resp.attributes[10]);
-                    printf("%d",resp.attributes[11]);
-                    printf("%d::",resp.attributes[12]);
-                    printf("%d",p);
-                    fflush(stdout);
+                    // printf("\n ip bgn - %d",resp.attributes[9]);
+                    // printf("%d",resp.attributes[10]);
+                    // printf("%d",resp.attributes[11]);
+                    // printf("%d::",resp.attributes[12]);
+                    // printf("%d",p);
+                    // fflush(stdout);
 
                     char a;
                     int clientusrnemlen = resp.attributes[16];
@@ -267,7 +267,7 @@ int main()
 
     bzero(&client_addr, sizeof(client_addr));
     client_addr.sin_family = AF_INET;
-    client_addr.sin_port = htons(19452);
+    client_addr.sin_port = htons(12865);
     client_addr.sin_addr.s_addr = INADDR_ANY;
 
     bzero(&server_addr, sizeof(server_addr));
@@ -332,6 +332,7 @@ int main()
     else if(choice == 2)
     {
         CLIENT clients[10];
+        bzero(&clients,sizeof(clients));
         make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);
         conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
         life_cycle(sockfd,server_addr,clients,10);

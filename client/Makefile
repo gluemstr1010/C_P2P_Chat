@@ -1,4 +1,4 @@
-GCC_FLAGS=-g -Wall -Wshadow -Wextra
+GCC_FLAGS=-g -Wall -Wshadow -Wextra -lpthread
 LIBS=-lcurl
 
 
