@@ -43,7 +43,7 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd, char* sourceIP, u_int1
       if(cs == 1)
       {
         bzero(&resp,sizeof(resp));
-        resp.message_type = 0x04;
+        resp.message_type = 0x0004;
          memcpy(resp.trasaction_id,transcid,sizeof(resp.trasaction_id));
          resp.attributes[1] = 0x04;
          
@@ -85,7 +85,7 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd, char* sourceIP, u_int1
         activeServers++;
 
         bzero(&resp,sizeof(resp));
-        resp.message_type = 0x03;
+        resp.message_type = 0x0003;
         memcpy(resp.trasaction_id,transcid,sizeof(resp.trasaction_id));
         resp.attributes[1] = 0x03;
         char let;
@@ -188,7 +188,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
             server_port = servers[i].server_port;
              server_backlog = servers[i].backlog;
 
-             response.message_type = 0x05;
+             response.message_type = 0x0005;
             memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
             response.attributes[1] = 0x55;
             response.attributes[7] = (server_port >> 8) & 0xFF;
@@ -252,7 +252,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
                     if (servers[i].clients[j].client_port != 0)
                     {
                          bzero(&response,sizeof(response));
-                        response.message_type = 0x05;
+                        response.message_type = 0x0005;
                         memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
                         response.attributes[1] = 0x05;
                         response.attributes[7] = (servers[i].clients[j].client_port >> 8) & 0xFF;
@@ -296,7 +296,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
          printf("notgut");
         fflush(stdout);
         bzero(&response,sizeof(response));
-        response.message_type = 0x06;
+        response.message_type = 0x0006;
         memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
         response.attributes[1] = 0x06;
         response.attributes[3] = strlen(err_msg);
@@ -364,7 +364,7 @@ void broadcast_new_client(int sockfd, u_int16_t port,char *sourceaddr, char *usr
     process_srcIP(sourceaddr,new_client);
 
     SERV_MSG msg;
-    msg.message_type = 0x11;
+    msg.message_type = 0x0011;
     msg.attributes[1] = 0x11;
     msg.attributes[7] = (port >> 8) & 0xFF;
     msg.attributes[8] = port & 0xFF;

@@ -45,10 +45,10 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
 
     uint16_t p;
 
-    if(resp.message_type == 0x06)
+    if(resp.message_type == 0x0006)
     {
         process_err_resp(resp);
-    }else if(resp.message_type == 0x05)
+    }else if(resp.message_type == 0x0005)
     {
         
         if(resp.attributes[1] == 0x55)
@@ -99,7 +99,8 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
                 }
 
                 printf("\n%d - cport",clients[i].client_port);
-                printf("\n%d - i",i);                    
+                printf("\n%d - i",i);              
+                fflush(stdout);      
                 if(clients[i].client_port == 0 )
                 {
                     
@@ -274,7 +275,7 @@ int main()
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(21504);
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    // inet_pton(AF_INET,"78.80.195.234",&(server_addr.sin_addr));    
+
 
     socklen_t addrsize;
 

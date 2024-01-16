@@ -70,7 +70,7 @@ int main()
         strcpy(temp,sourceip);
         char let;
         
-        if(req.message_type == 0x01)
+        if(req.message_type == 0x0001)
         {
             make_find_res(req,server_sockfd,sourceip,port,client_addr,addr_size);
             process_req(req,chatname,client_usrname,let,req.attributes[14]);
@@ -78,7 +78,7 @@ int main()
             broadcast_new_client(server_sockfd,port,temp,client_usrname,chatname);
         }
 
-        if(req.message_type == 0x02)
+        if(req.message_type == 0x0002)
         {
             make_alloc_res(req,server_sockfd,sourceip,port,client_addr,addr_size);
         }

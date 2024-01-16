@@ -18,7 +18,7 @@ void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char userna
      time_t t;
     srand((unsigned)time(&t));
 
-    find_req.message_type = 0x01;
+    find_req.message_type = 0x0001;
      for (int i = 0; i < sizeof(find_req.trasaction_id) / sizeof(find_req.trasaction_id[0]); i++)
     {
         find_req.trasaction_id[i] = rand() % 256;
@@ -66,7 +66,7 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
     time_t t;
     srand((unsigned)time(&t));
 
-    alloc_req.message_type = 0x02;
+    alloc_req.message_type = 0x0002;
      for (int i = 0; i < sizeof(alloc_req.trasaction_id) / sizeof(alloc_req.trasaction_id[0]); i++)
     {
         alloc_req.trasaction_id[i] = rand() % 256;
@@ -109,7 +109,7 @@ void* refresh_NAT_entry(void* arg)
 {
     struct RefreshThreadParams* params = (struct RefreshThreadParams*)arg;
 
-    params->msg.message_type = 0x88;
+    params->msg.message_type = 0x0088;
     while(1)
     {
         for(int i = 0; i < PACKETSTOSEND; i++)
@@ -151,7 +151,7 @@ void* listen_for_Update(void* arg)
         //     fflush(stdout);
         // }
 
-        if(params->msg.message_type == 0x11)
+        if(params->msg.message_type == 0x0011)
         {
             for(int i = 0; i < params->arrsize; i++)
             {
@@ -186,7 +186,12 @@ void* listen_for_Update(void* arg)
                     params->clients[i].chatroom = (char *)malloc(roomnamelen);
                     strcpy(params->clients[i].chatroom,temproomname);
                     strcpy(params->clients[i].usrname,tempusrnem);
-                   
+                    
+                    // printf("\n%d",params->clients[i].client_addr[0]);
+                    // printf("%d",params->clients[i].client_addr[1]);
+                    // printf("%d",params->clients[i].client_addr[2]);
+                    // printf("%d::",params->clients[i].client_addr[3]);
+                    // printf("%d",params->clients[i].client_port);
                     break;
                 }
             }
@@ -196,7 +201,7 @@ void* listen_for_Update(void* arg)
             
         }
         
-        if(params->msg.message_type == 0x76)
+        if(params->msg.message_type == 0x0076)
         {
             int msglen = params->msg.attributes[1];
             char let;
@@ -262,7 +267,7 @@ void* send_msg(void* arg)
         fflush(stdout);
         fgets(msg,sizeof(msg),stdin);
 
-        params->msg.message_type = 0x76;
+        params->msg.message_type = 0x0076;
         for (int i = 0; i < sizeof(params->msg.trasaction_id) / sizeof(params->msg.trasaction_id[0]); i++)
         {
             params->msg.trasaction_id[i] = rand() % 256;
@@ -283,8 +288,6 @@ void* send_msg(void* arg)
         {
             if(params->clients[i].client_port != 0)
             {
-                // printf("\n%d-p",params->clients[i].client_port);
-                // fflush(stdout);
                  bzero(&client,sizeof(client));
                 client.sin_family = AF_INET;
                 client.sin_port = htons(params->clients[i].client_port);
@@ -298,7 +301,7 @@ void* send_msg(void* arg)
                     perror("Error converting IP address to string");
                 }
 
-                // Print the IP address
+                
             //     printf("\nIP Address: %s\n", ipAddress);
             //     printf("%u",client.sin_port);
 
