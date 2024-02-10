@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <time.h>
 #include <pthread.h>
 #include "client_api.h"
 
@@ -29,7 +30,7 @@ void process_err_resp(CLIENT_MSG resp)
         free(ms);
 }
 
-void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clientfd,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
+void client_stage(CLIENT_MSG resp ,CLIENT_MSG refreshinfo , CLIENT *clients, int arrclientlen ,int clientfd,int refreshsock,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
 {
 
     int backlog = resp.attributes[14];
@@ -139,54 +140,12 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
 
              }
 
-            
-            
-
-            // clients = (CLIENT *)malloc(resp.attributes[14] * sizeof(CLIENT));
-            // clients[0]->client_port = ntohs(*(int16_t *)(&resp.attributes[7]));
-
-            
-
-
-            // repeat:
-            // while(true)
-            // {
-            //     bzero(&resp,sizeof(resp));
-            //     if( recvfrom(clientfd,&resp,sizeof(resp),0,(struct sockaddr*)&address, &addrsize) < 0)
-            //     {
-            //         break;
-            //     }
-            //     else
-            //     {
-            //         printf("\n");
-            //         printf("%d",resp.attributes[9]);
-            //         printf("%d",resp.attributes[10]);
-            //         printf("%d",resp.attributes[11]);
-            //         printf("%d",resp.attributes[12]);
-            //         goto repeat;
-            //     }
-            // }
-            
+              sendto(refreshsock,&refreshinfo,sizeof(refreshinfo),0,(struct sockaddr*)&address,sizeof(address));           
         }
     }
 }
 
-// void roomserver_stage(CLIENT_MSG resp ,int clientfd, struct sockaddr_in address, int address_len)
-// {
- 
-
-//     if(resp.message_type == 0x04)
-//     {
-//         process_err_resp(resp);
-//         exit(EXIT_FAILURE);
-//     }else if(resp.message_type != 0x03)
-//     {
-//         // 
-//          exit(EXIT_FAILURE);
-//     }
-// }
-
-void life_cycle(int sockfd,struct sockaddr_in server_addr, CLIENT clients[], int bcklog)
+void life_cycle(int sockfd,int refreshsock,struct sockaddr_in server_addr, CLIENT clients[], int bcklog)
 {
      pthread_t UpdateThread;
     CLIENT_MSG update;
@@ -195,7 +154,7 @@ void life_cycle(int sockfd,struct sockaddr_in server_addr, CLIENT clients[], int
 
     struct UpdateThreadParams ut = {
         .msg = update,
-        .clientfd = sockfd,
+        .refreshfd = refreshsock,
         .address = server_addr,
         .address_len = len,
         .clients = clients,
@@ -207,6 +166,15 @@ void life_cycle(int sockfd,struct sockaddr_in server_addr, CLIENT clients[], int
     bzero(&msg,sizeof(msg));
 
     struct RefreshThreadParams rtp = {
+        .msg = msg,
+        .clientfd = sockfd,
+        .address = server_addr,
+        .address_len = len
+    };
+
+    pthread_t recvThread;
+    
+    struct RecvThreadParams rcvtp = {
         .msg = msg,
         .clientfd = sockfd,
         .address = server_addr,
@@ -233,6 +201,11 @@ void life_cycle(int sockfd,struct sockaddr_in server_addr, CLIENT clients[], int
         exit(EXIT_FAILURE);
     }
 
+     if (pthread_create(&recvThread, NULL,&recv_msg,(void*)&rcvtp) != 0) {
+        perror("Thread creation failed");
+        exit(EXIT_FAILURE);
+    }
+
      if (pthread_create(&sendThread, NULL,&send_msg,(void*)&stp) != 0) {
         perror("Thread creation failed");
         exit(EXIT_FAILURE);
@@ -248,6 +221,11 @@ void life_cycle(int sockfd,struct sockaddr_in server_addr, CLIENT clients[], int
         exit(EXIT_FAILURE);
     }
 
+    if (pthread_join(recvThread, NULL) != 0) {
+        perror("Thread join failed");
+        exit(EXIT_FAILURE);
+    }
+
     if (pthread_join(sendThread, NULL) != 0) {
         perror("Thread join failed");
         exit(EXIT_FAILURE);
@@ -258,10 +236,15 @@ void life_cycle(int sockfd,struct sockaddr_in server_addr, CLIENT clients[], int
 int main()
 {
 
-    int sockfd;
-    struct sockaddr_in client_addr, server_addr;
+    int sockfd, refreshsock;
+    struct sockaddr_in client_addr, refresh_addr, server_addr;
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
+        printf("Socket failed lol");
+    }
+
+    if ((refreshsock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
         printf("Socket failed lol");
     }
@@ -271,10 +254,28 @@ int main()
     client_addr.sin_port = htons(19302);
     client_addr.sin_addr.s_addr = INADDR_ANY;
 
+        bzero(&refresh_addr, sizeof(refresh_addr));
+    refresh_addr.sin_family = AF_INET;
+    refresh_addr.sin_port = htons(12080);
+    refresh_addr.sin_addr.s_addr = INADDR_ANY;
+
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(21504);
-    server_addr.sin_addr.s_addr = INADDR_ANY;
+    inet_pton(AF_INET,"78.80.195.234",&server_addr.sin_addr);
+
+    if( bind(sockfd,(struct sockaddr*)&client_addr,sizeof(client_addr)) < 0 )
+    {
+        printf("bind failed - 1");
+        exit(EXIT_FAILURE);
+    }
+
+    if( bind(refreshsock,(struct sockaddr*)&refresh_addr,sizeof(refresh_addr)) < 0 )
+    {
+        printf("\n Last error was: %s",strerror(errno));
+        fflush(stdout);
+        exit(EXIT_FAILURE);
+    }
 
 
     socklen_t addrsize;
@@ -301,6 +302,11 @@ int main()
     bzero(&resp,sizeof(resp));
     int len = sizeof(server_addr);
 
+    CLIENT_MSG refreshsockf_info;
+    bzero(&refreshsockf_info,sizeof(refreshsockf_info));
+    refreshsockf_info.message_type = 0x0044;
+
+
     
 
     int pom;    
@@ -309,12 +315,13 @@ int main()
     {
         make_find_req(req,sockfd,roomname,username,server_addr,len);
          conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
+         sendto(refreshsock,&refreshsockf_info,sizeof(refreshsockf_info),0,(struct sockaddr*)&server_addr,addrsize);
          int bcklg = resp.attributes[14];
          pom = bcklg;
          CLIENT clients[bcklg];
          bzero(&clients,sizeof(clients));     
-         client_stage(resp,clients,bcklg,sockfd,roomname,strlen(roomname),server_addr,addrsize);
-         life_cycle(sockfd,server_addr,clients,bcklg);
+         client_stage(resp,refreshsockf_info,clients,bcklg,sockfd,refreshsock,roomname,strlen(roomname),server_addr,addrsize);
+         life_cycle(sockfd,refreshsock,server_addr,clients,bcklg);
 
         //  for(int i = 0; i < bcklg -1 ; i++)
         //  {
@@ -336,7 +343,7 @@ int main()
         bzero(&clients,sizeof(clients));
         make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);
         conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
-        life_cycle(sockfd,server_addr,clients,10);
+        life_cycle(sockfd,refreshsock,server_addr,clients,10);
     }else
     {
         exit(EXIT_FAILURE);

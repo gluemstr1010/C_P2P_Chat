@@ -1,11 +1,12 @@
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <uchar.h>
+#include <sys/time.h>
 #include <time.h>
-#include <curl/curl.h>
 #include <errno.h>
 #include "client_api.h"
 
@@ -136,7 +137,7 @@ void* listen_for_Update(void* arg)
     recvtimeout.tv_sec = 0;
     recvtimeout.tv_usec = 100000;
 
-    if(setsockopt( params->clientfd,SOL_SOCKET,SO_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0)
+    if(setsockopt( params->refreshfd,SOL_SOCKET,SO_RCVTIMEO,&recvtimeout,sizeof(recvtimeout)) < 0)
     {
                 printf("\n Error when setiing timeout, exiting...");
                 exit(EXIT_FAILURE);
@@ -144,7 +145,7 @@ void* listen_for_Update(void* arg)
 
     while (1)
     {
-        j = recvfrom(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&params->address,&sz);
+        j = recvfrom(params->refreshfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&params->address,&sz);
         // if( ( <= 0 )
         // {
         //     printf("\n Last error was: %s",strerror(errno));
@@ -198,10 +199,30 @@ void* listen_for_Update(void* arg)
         }
         if(params->msg.message_type != 0)
         {
-            
+            printf("\n 0x%02X - upd",params->msg.message_type);
+            fflush(stdout);
         }
         
-        if(params->msg.message_type == 0x0076)
+
+        bzero(&params->msg,sizeof(params->msg));
+        fflush(stdout);
+    }
+}
+
+void* recv_msg(void* arg)
+{
+    struct RecvThreadParams* params = (struct RecvThreadParams*)arg;
+    socklen_t sz = sizeof(params->address);
+
+    int j = recvfrom(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&params->address,&sz);
+
+    if(params->msg.message_type != 0)
+    {
+            printf("\n 0x%02X - recv",params->msg.message_type);
+            fflush(stdout);
+    }
+
+    if(params->msg.message_type == 0x0076)
         {
             int msglen = params->msg.attributes[1];
             char let;
@@ -219,11 +240,6 @@ void* listen_for_Update(void* arg)
             printf("\n%s",mesg);
             fflush(stdout);
         }
-
-        bzero(&params->msg,sizeof(params->msg));
-        fflush(stdout);
-    }
-    
 }
 
 char* convert_IP_tochar(uint8_t ipadd[])
