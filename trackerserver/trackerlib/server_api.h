@@ -18,6 +18,7 @@ struct ci
 {
     uint8_t client_addr[4];
     uint16_t client_port;
+    uint16_t refresh_port;
     char *chatroom; 
     char *usrname;
 };
@@ -27,6 +28,7 @@ struct si
 {
     uint8_t server_addr[4];
     uint16_t server_port;
+    uint16_t refresh_port;
     char *chatroom; 
     char *usrname;
     int backlog;

@@ -22,6 +22,7 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd, char* sourceIP, u_int1
 
    char let;
    int a;
+   socklen_t addrsiz = sizeof(address);
    uint8_t temp_add[4];
 
    
@@ -102,10 +103,23 @@ void make_alloc_res(SERV_MSG alloc_req,int client_sockfd, char* sourceIP, u_int1
         k = sendto(client_sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&address,address_len);
         if(k < 0)
         {
-            printf("\n Last error was: %s",strerror(errno));
-        }
+            printf("\n Last error was 1 -: %s",strerror(errno));   
+    	}
         
-        break; 
+	bzero(&resp,sizeof(resp));
+	bzero(&address,sizeof(address));
+	
+	k = recvfrom(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,&addrsiz);       
+	if(k < 0)
+        {
+            printf("\n Last error was 2 -: %s",strerror(errno));   
+    	}	   
+    	
+	servers[i].refresh_port = ntohs(address.sin_port);
+	printf("\n %d - alloc_refresh_port",servers[i].refresh_port);
+	fflush(stdout);
+
+	break;
       }    
    }
 }
@@ -157,6 +171,7 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
 
    char let;
    int a;
+   socklen_t addrsiz = sizeof(address);
    uint8_t client_add[4];
 
    process_srcIP(sourceIP,client_add);
@@ -175,6 +190,8 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
    int err = 0;
 
    printf("\n%d\n",port);
+
+   int x, y = 0;
    
    for(int i = 0; i < activeServers ; i++)
    {    
@@ -237,7 +254,9 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
                         servers[i].clients[j].chatroom = chtname;
                         servers[i].clients[j].usrname = client_usrname;
                         servers[i].activeClients++;
-                        
+                	
+			x = i;
+			y = j;	
                         // printf("\n%d",servers[i].clients[j].client_addr[0]);
                         // printf("%d",servers[i].clients[j].client_addr[1]);
                         // printf("%d",servers[i].clients[j].client_addr[2]);
@@ -280,10 +299,22 @@ void make_find_res(SERV_MSG find_req,int client_sockfd,  char* sourceIP, u_int16
                             int j = sendto(client_sockfd,&response,sizeof(response),MSG_WAITALL,(struct sockaddr*)&address,address_len);
                             if(j < 0)
                             {
-                                printf("\n Last error was: %s",strerror(errno));
+                                printf("\n Last error was: %s - 11",strerror(errno));
                                 fflush(stdout);
                             }
-                            fflush(stdout);
+                            bzero(&response,sizeof(response));
+
+			    j = recvfrom(client_sockfd,&response,sizeof(response),0,(struct sockaddr*)&address,&addrsiz);
+			    if(j < 0)
+                            {
+                                printf("\n Last error was: %s - 22",strerror(errno));
+                                fflush(stdout);
+                            }
+                            printf( "\n %d - recv",j ); 
+			    
+			    servers[x].clients[y].refresh_port = ntohs(address.sin_port);
+			    printf("\n  %d - find refresh port",ntohs(address.sin_port));
+			    fflush(stdout);
                     }
 
               }
@@ -405,17 +436,19 @@ void broadcast_new_client(int sockfd, u_int16_t port,char *sourceaddr, char *usr
             {
                 bzero(&activeCLient,sizeof(activeCLient));
                 activeCLient.sin_family = AF_INET;
-                activeCLient.sin_port = htons(servers[i].server_port);
+                activeCLient.sin_port = htons(servers[i].refresh_port);
                 inet_pton(AF_INET,convert_IP_tochar(servers[i].server_addr),&(activeCLient.sin_addr));
                     // inet_pton(AF_INET,"127.0.0.1",&(activeCLient.sin_addr)); 
-                    
+		printf(" \n%d ", servers[i].refresh_port);
+                fflush(stdout);
+
                 int e = sendto(sockfd, &msg, sizeof(msg), 0,(struct sockaddr*)&activeCLient, sizeof(activeCLient));
                     
                 for(int j = 0; j < servers[i].activeClients-1 ; j++)
                 {
                     bzero(&activeCLient,sizeof(activeCLient));
                     activeCLient.sin_family = AF_INET;
-                    activeCLient.sin_port = htons(servers[i].clients[j].client_port);
+                    activeCLient.sin_port = htons(servers[i].clients[j].refresh_port);
                     inet_pton(AF_INET,convert_IP_tochar(servers[i].clients[j].client_addr),&(activeCLient.sin_addr));
                     // inet_pton(AF_INET,"127.0.0.1",&(activeCLient.sin_addr)); 
                 
