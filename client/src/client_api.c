@@ -121,6 +121,13 @@ void* refresh_NAT_entry(void* arg)
                 printf("\n Last error was: %s",strerror(errno));
                 fflush(stdout);
             }
+	    
+
+	    if((q = sendto(params->refreshfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&params->address,params->address_len)) <= 0)
+            {
+                printf("\n Last error was: %s",strerror(errno));
+                fflush(stdout);
+            }
             // printf("\n send this much %d",q);
             // fflush(stdout);
             sleep(REFRESH_INTERVAL);
@@ -214,7 +221,7 @@ void* recv_msg(void* arg)
     struct RecvThreadParams* params = (struct RecvThreadParams*)arg;
     socklen_t sz = sizeof(params->address);
 
-    int j = recvfrom(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&params->address,&sz);
+    int j = recvfrom(params->clientfd,&params->msg,sizeof(params->msg),0,NULL,NULL);
 
     if(params->msg.message_type != 0)
     {

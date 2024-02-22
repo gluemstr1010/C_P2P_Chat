@@ -30,7 +30,7 @@ void process_err_resp(CLIENT_MSG resp)
         free(ms);
 }
 
-void client_stage(CLIENT_MSG resp ,CLIENT_MSG refreshinfo , CLIENT *clients, int arrclientlen ,int clientfd,int refreshsock,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
+void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clientfd,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
 {
 
     int backlog = resp.attributes[14];
@@ -139,8 +139,7 @@ void client_stage(CLIENT_MSG resp ,CLIENT_MSG refreshinfo , CLIENT *clients, int
                 i++;
 
              }
-
-              sendto(refreshsock,&refreshinfo,sizeof(refreshinfo),0,(struct sockaddr*)&address,sizeof(address));           
+                        
         }
     }
 }
@@ -168,6 +167,7 @@ void life_cycle(int sockfd,int refreshsock,struct sockaddr_in server_addr, CLIEN
     struct RefreshThreadParams rtp = {
         .msg = msg,
         .clientfd = sockfd,
+	.refreshfd = refreshsock,
         .address = server_addr,
         .address_len = len
     };
@@ -239,6 +239,10 @@ int main()
     int sockfd, refreshsock;
     struct sockaddr_in client_addr, refresh_addr, server_addr;
 
+     struct timeval reftimeout;      
+    reftimeout.tv_sec = 15;
+    reftimeout.tv_usec = 0;
+
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
         printf("Socket failed lol");
@@ -262,7 +266,7 @@ int main()
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(21504);
-    inet_pton(AF_INET,"78.80.195.234",&server_addr.sin_addr);
+    inet_pton(AF_INET,"1.1.1.1",&server_addr.sin_addr);
 
     if( bind(sockfd,(struct sockaddr*)&client_addr,sizeof(client_addr)) < 0 )
     {
@@ -275,6 +279,12 @@ int main()
         printf("\n Last error was: %s",strerror(errno));
         fflush(stdout);
         exit(EXIT_FAILURE);
+    }
+
+    if(setsockopt( refreshsock,SOL_SOCKET,SO_RCVTIMEO,&reftimeout,sizeof(reftimeout)) < 0)
+    {
+                printf("\n Error when setiing timeout, exiting...");
+                exit(EXIT_FAILURE);
     }
 
 
@@ -304,7 +314,10 @@ int main()
 
     CLIENT_MSG refreshsockf_info;
     bzero(&refreshsockf_info,sizeof(refreshsockf_info));
-    refreshsockf_info.message_type = 0x0044;
+    refreshsockf_info.message_type = htons(0x0044);
+
+    CLIENT_MSG refreshsockf_rsp;
+    bzero(&refreshsockf_rsp,sizeof(refreshsockf_rsp));
 
 
     
@@ -314,13 +327,30 @@ int main()
     if(choice == 1)
     {
         make_find_req(req,sockfd,roomname,username,server_addr,len);
-         conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
-         sendto(refreshsock,&refreshsockf_info,sizeof(refreshsockf_info),0,(struct sockaddr*)&server_addr,addrsize);
+         conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);        
          int bcklg = resp.attributes[14];
          pom = bcklg;
          CLIENT clients[bcklg];
          bzero(&clients,sizeof(clients));     
-         client_stage(resp,refreshsockf_info,clients,bcklg,sockfd,refreshsock,roomname,strlen(roomname),server_addr,addrsize);
+         client_stage(resp,clients,bcklg,sockfd,roomname,strlen(roomname),server_addr,addrsize);
+
+	while(true)
+	{
+	     sendto(refreshsock,&refreshsockf_info,sizeof(refreshsockf_info),0,(struct sockaddr*)&server_addr,addrsize);
+	     
+	     bzero(&refreshsockf_info,sizeof(refreshsockf_info));
+             int rfshrsp = recvfrom(refreshsock,&refreshsockf_rsp,sizeof(refreshsockf_rsp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
+	     
+	    if(rfshrsp > 0)
+	    {
+		printf("%d",ntohs(refreshsockf_rsp.message_type));
+		fflush(stdout);
+		if(ntohs(refreshsockf_rsp.message_type) == 0x0404)
+		{
+		    break;
+		}
+ 	    }
+	} 
          life_cycle(sockfd,refreshsock,server_addr,clients,bcklg);
 
         //  for(int i = 0; i < bcklg -1 ; i++)
@@ -343,7 +373,24 @@ int main()
         bzero(&clients,sizeof(clients));
         make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);
         conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
-        life_cycle(sockfd,refreshsock,server_addr,clients,10);
+        
+        while(true)
+	{
+	     sendto(refreshsock,&refreshsockf_info,sizeof(refreshsockf_info),0,(struct sockaddr*)&server_addr,addrsize);
+	     
+	     bzero(&refreshsockf_rsp,sizeof(refreshsockf_rsp));
+             int rfshrsp = recvfrom(refreshsock,&refreshsockf_rsp,sizeof(refreshsockf_rsp),MSG_WAITALL,NULL,NULL);
+	     
+	    if(rfshrsp > 0)
+	    {
+		if(ntohs(refreshsockf_rsp.message_type) == 0x0404)
+		{
+		    break;
+		}
+ 	    }
+	}
+        
+	life_cycle(sockfd,refreshsock,server_addr,clients,10);
     }else
     {
         exit(EXIT_FAILURE);

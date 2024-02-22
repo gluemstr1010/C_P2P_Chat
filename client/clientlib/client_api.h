@@ -26,6 +26,7 @@ typedef struct si CLIENT;
 struct RefreshThreadParams {
     CLIENT_MSG msg;
     int clientfd;
+    int refreshfd;
     struct sockaddr_in address;
     int address_len;
 };
