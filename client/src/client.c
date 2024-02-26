@@ -196,10 +196,10 @@ void life_cycle(int sockfd,int refreshsock,struct sockaddr_in server_addr, CLIEN
         exit(EXIT_FAILURE);
     }
 
-    if (pthread_create(&refreshNatEntryThread, NULL,&refresh_NAT_entry,(void*)&rtp) != 0) {
-        perror("Thread creation failed");
-        exit(EXIT_FAILURE);
-    }
+  //  if (pthread_create(&refreshNatEntryThread, NULL,&refresh_NAT_entry,(void*)&rtp) != 0) {
+  //      perror("Thread creation failed");
+  //      exit(EXIT_FAILURE);
+  //  }
 
      if (pthread_create(&recvThread, NULL,&recv_msg,(void*)&rcvtp) != 0) {
         perror("Thread creation failed");
@@ -216,10 +216,10 @@ void life_cycle(int sockfd,int refreshsock,struct sockaddr_in server_addr, CLIEN
         exit(EXIT_FAILURE);
     }
 
-    if (pthread_join(refreshNatEntryThread, NULL) != 0) {
-        perror("Thread join failed");
-        exit(EXIT_FAILURE);
-    }
+   // if (pthread_join(refreshNatEntryThread, NULL) != 0) {
+   //     perror("Thread join failed");
+   //     exit(EXIT_FAILURE);
+   // }
 
     if (pthread_join(recvThread, NULL) != 0) {
         perror("Thread join failed");

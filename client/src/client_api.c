@@ -204,11 +204,11 @@ void* listen_for_Update(void* arg)
                 }
             }
         }
-        if(params->msg.message_type != 0)
-        {
-            printf("\n 0x%02X - upd",params->msg.message_type);
-            fflush(stdout);
-        }
+       // if(params->msg.message_type != 0)
+       // {
+       //     printf("\n 0x%02X - upd",params->msg.message_type);
+       //     fflush(stdout);
+       // }
         
 
         bzero(&params->msg,sizeof(params->msg));
@@ -221,15 +221,17 @@ void* recv_msg(void* arg)
     struct RecvThreadParams* params = (struct RecvThreadParams*)arg;
     socklen_t sz = sizeof(params->address);
 
-    int j = recvfrom(params->clientfd,&params->msg,sizeof(params->msg),0,NULL,NULL);
+   while(1)
+   {
+	 int j = recvfrom(params->clientfd,&params->msg,sizeof(params->msg),0,NULL,NULL);
 
-    if(params->msg.message_type != 0)
-    {
-            printf("\n 0x%02X - recv",params->msg.message_type);
-            fflush(stdout);
-    }
+ //   if(params->msg.message_type != 0)
+ //   {
+ //           printf("\n 0x%02X - recv",params->msg.message_type);
+ //           fflush(stdout);
+ //   }
 
-    if(params->msg.message_type == 0x0076)
+    if(params->msg.message_type == 0x76)
         {
             int msglen = params->msg.attributes[1];
             char let;
@@ -247,6 +249,7 @@ void* recv_msg(void* arg)
             printf("\n%s",mesg);
             fflush(stdout);
         }
+   }
 }
 
 char* convert_IP_tochar(uint8_t ipadd[])
@@ -280,7 +283,7 @@ char* convert_IP_tochar(uint8_t ipadd[])
 
 void* send_msg(void* arg)
 {
-     struct SendThreadParams* params = (struct UpdateThreadParams*)arg;
+     struct SendThreadParams* params = (struct SendThreadParams*)arg;
      struct sockaddr_in client;
     while(1)
     {
@@ -309,6 +312,8 @@ void* send_msg(void* arg)
 
         for(int i = 0; i < params->arrsize; i++)
         {
+	    printf("%d",params->clients[i].client_port);
+	    fflush(stdout);
             if(params->clients[i].client_port != 0)
             {
                  bzero(&client,sizeof(client));
@@ -335,6 +340,6 @@ void* send_msg(void* arg)
             }
         }
 
-        fgetc(stdin);
+        
     }
 }
