@@ -13,7 +13,7 @@ BINARY=trackerserver
 all: $(BINARY)
 
 $(BINARY): $(TRCK_OBJ_FILES)
-	gcc $(GCC_FLAGS) $(TRCK_OBJ_FILES) -o $(BINARY)
+	gcc $(GCC_FLAGS) $(TRCK_OBJ_FILES) -o $(BINARY) -lm -lgmp
 
 $(TRCK_OBJ_DIR)/%.o: $(TRCK_SRC_DIR)/%.c
 	gcc $(GCC_FLAGS) -c $^ -I$(TRCK_HDR_DIR) -o $@

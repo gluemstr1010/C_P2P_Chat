@@ -266,7 +266,8 @@ int main()
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(21504);
-    inet_pton(AF_INET,"1.1.1.1",&server_addr.sin_addr);
+    // inet_pton(AF_INET,"1.1.1.1",&server_addr.sin_addr);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
 
     if( bind(sockfd,(struct sockaddr*)&client_addr,sizeof(client_addr)) < 0 )
     {
@@ -319,8 +320,9 @@ int main()
     CLIENT_MSG refreshsockf_rsp;
     bzero(&refreshsockf_rsp,sizeof(refreshsockf_rsp));
 
-
-    
+    CLIENT_MSG hello_pkt;
+    bzero(&hello_pkt,sizeof(hello_pkt));
+    hello_pkt.message_type = htons(0x0022);    
 
     int pom;    
 
@@ -369,6 +371,8 @@ int main()
     }
     else if(choice == 2)
     {
+        sendto(sockfd,&hello_pkt,sizeof(hello_pkt),0,(struct sockaddr*)&server_addr,addrsize);
+
         CLIENT clients[10];
         bzero(&clients,sizeof(clients));
         make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);

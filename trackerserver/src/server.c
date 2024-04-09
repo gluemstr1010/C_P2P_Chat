@@ -9,7 +9,9 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <time.h>
 #include "server_api.h"
+// #include "../../encryption/rsa/rsa.c"
 
 #define PORT 21504
 
@@ -40,11 +42,14 @@ int main()
     }
 
     
-    printf("\n Waiting for incoming connections ...");
+    // printf("\n Waiting for incoming connections ...");
     fflush(stdout);
     struct sockaddr_in client_addr;
     socklen_t addr_size;
     addr_size = sizeof(client_addr);
+    gmp_randstate_t state;
+    gmp_randinit_default(state);
+    gmp_randseed_ui(state, time(NULL));
 
     SERV_MSG req;
 
@@ -70,6 +75,7 @@ int main()
         strcpy(temp,sourceip);
         char let;
         
+        
         if(req.message_type == 0x0001)
         {
             make_find_res(req,server_sockfd,sourceip,port,client_addr,addr_size);
@@ -78,13 +84,16 @@ int main()
             broadcast_new_client(server_sockfd,port,temp,client_usrname,chatname);
         }
 
-        if(req.message_type == 0x0002)
+        if(ntohs(req.message_type) == 0x200)
         {
-            make_alloc_res(req,server_sockfd,sourceip,port,client_addr,addr_size);
+            send_key(server_sockfd,client_addr,addr_size,state);
+            // make_alloc_res(req,server_sockfd,sourceip,port,client_addr,addr_size);
         }
+        free(chatname);
+        free(client_usrname);
         }
         
-
+        
     }
     
     return 0;

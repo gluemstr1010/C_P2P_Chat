@@ -6,7 +6,9 @@
 #include <arpa/inet.h>
 #include <uchar.h>
 #include <errno.h>
+#include <gmp.h>
 #include "server_api.h"
+#include "../../encryption/rsa/rsa.c"
 
 // make hash tables
 server_info servers[1000];
@@ -462,6 +464,77 @@ void broadcast_new_client(int sockfd, u_int16_t port,char *sourceaddr, char *usr
         }
         
     }
+}
+
+void send_key(int serv_sockfd,struct sockaddr_in address, int address_len,gmp_randstate_t state)
+{
+    char* p = generate_prime(state);
+    char* q = generate_prime(state);
+   
+    mpz_t n,pp,qq, eul;
+    mpz_init(n);
+    mpz_init(pp);
+    mpz_init(qq);
+    mpz_init(eul);
+
+    mpz_set_str(pp,p,10);
+    mpz_set_str(qq,q,10);
+
+    mpz_mul(n,pp,qq);
+
+    char* mod = mpz_get_str(NULL,10,n);
+
+    mpz_sub_ui(pp,pp,1);
+    mpz_sub_ui(qq,qq,1);
+
+    mpz_mul(eul,pp,qq);
+
+    char* euler = mpz_get_str(NULL,10,eul);
+
+    mpz_clears(n,eul,pp,qq,NULL);
+
+    char* exponent = malloc(6);
+    strcpy(exponent,"65537");
+
+    char* pd = get_d(euler,exponent);
+
+    SEND_KEY_MSG ack;
+    bzero(&ack,sizeof(ack));
+
+    ack.message_type = 0x2020;
+
+    ack.attributes[0] = 0x1;
+
+    char c = 'c';
+    int a = 0;
+
+    for(size_t i = 1; i < 1 + strlen(exponent); i++)
+    {
+        char c = exponent[i-1];
+        a = (int)c;
+        ack.attributes[i] = a;
+        // printf("%d",a);
+        // fflush(stdout);
+    }
+    char* isitthesame = calloc(16,sizeof(char));
+
+    for(size_t i = 1; i < 1 + strlen(exponent); i++)
+    {
+        c = (char)ack.attributes[i];
+        isitthesame[i-1] = c; 
+        printf("%c",isitthesame[i-1]);
+        fflush(stdout);
+    }
+
+    // place modulus into message, send message to client
+
+    free(isitthesame);
+    free(p);
+    free(q);
+    free(pd);
+    free(euler);
+    free(mod);
+    free(exponent);
 }
 
 char* convert_IP_tochar(uint8_t ipadd[])
