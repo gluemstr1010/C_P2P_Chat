@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <gmp.h>
 #include "server_api.h"
-#include "../../encryption/rsa/rsa.c"
+#include "../../enc/rsa/rsa.c"
 
 // make hash tables
 server_info servers[1000];

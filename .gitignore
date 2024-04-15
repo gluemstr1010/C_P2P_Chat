@@ -3,7 +3,7 @@
 !src/
 !client/
 !clientlib/
-!encryption/
+!enc/
 !trackerlib/
 !*.c
 !*.h
