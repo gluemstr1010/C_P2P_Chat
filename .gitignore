@@ -5,7 +5,6 @@
 !clientlib/
 !encryption/
 !trackerlib/
-!testclient/
 !*.c
 !*.h
 !*.md
