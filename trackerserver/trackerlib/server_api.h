@@ -5,7 +5,7 @@
 #include <gmp.h>
 
 #define SERV_MSG_MINLENGTH 56
-#define SEND_KEY_MSG_MINLENGTH 1024 
+#define SEND_KEY_MSG_MINLENGTH 170
 
 struct sm
 {
@@ -51,11 +51,11 @@ void make_find_res(SERV_MSG find_req, int serv_sockfd,  char* sourceIP, u_int16_
 void broadcast_new_client(int sockfd,u_int16_t port,char *sourceaddr, char *usrname, char *roomname);
 
 void make_alloc_res(SERV_MSG alloc_req,int serv_sockfd, char* sourceIP, u_int16_t port, struct sockaddr_in address, int address_len);
-int canbe_server(SERV_MSG alloc_req,int i,char *chatname,uint8_t temp_add[],int16_t port);
+int canbe_server(int i,char *chatname,uint8_t temp_add[],int16_t port);
 
-void send_key(int serv_sockfd,struct sockaddr_in address, int address_len,gmp_randstate_t state);
+void send_key(int serv_sockfd,struct sockaddr_in address,gmp_randstate_t state);
 
-void process_req(SERV_MSG req,char *chatname, char *usrname,char let,int chatnamelen);
+void process_req(SERV_MSG req,char *chatname, char *usrname,int chatnamelen, int usrnemlen);
 
 uint8_t* process_srcIP(char* srcIP,uint8_t client_ipadd[]);
 char* convert_IP_tochar(uint8_t ipadd[]);

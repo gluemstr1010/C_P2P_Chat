@@ -1,6 +1,7 @@
 *
 !trackerserver/
 !src/
+!encryption/
 !trackerlib/
 !testclient/
 !*.c

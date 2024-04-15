@@ -19,7 +19,7 @@ void process_err_resp(CLIENT_MSG resp)
 {
         int l = resp.attributes[3];
         char *ms = malloc(l);
-        char let;
+        char let = 'l';
         for (int i = 4; i < 4 + l; i++)
         {
             let = (char)resp.attributes[i];
@@ -30,7 +30,34 @@ void process_err_resp(CLIENT_MSG resp)
         free(ms);
 }
 
-void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clientfd,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
+void handle_key(SEND_KEY_MSG msg)
+{
+    for(size_t i = 0; i < 100; i++ )
+    {
+        printf("%d",msg.attributes[i]);
+        fflush(stdout);
+    }
+
+    // for(int i = 2; i < (2 + e_len); i++)
+    // {
+    //     int c = (char)msg.attributes[i];
+    //     printf("%d",c);
+    //     fflush(stdout);
+    // }
+
+
+
+    // for(int i = (4 + e_len); i < e_len + m_len ; i++ )
+    // {
+    //     sm[(4 + e_len)] = (char)msg.attributes[i];
+    // }
+   
+    // printf("%s\n",se);
+    // // printf("%s\n",sm);
+    // fflush(stdout);
+}
+
+void client_stage(CLIENT_MSG resp , CLIENT *clients ,int clientfd,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
 {
 
     int backlog = resp.attributes[14];
@@ -51,7 +78,7 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
         process_err_resp(resp);
     }else if(resp.message_type == 0x0005)
     {
-        
+        char a = 'a';
         if(resp.attributes[1] == 0x55)
         {
             clients[0].client_addr[0] = resp.attributes[9];
@@ -62,7 +89,7 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
              p = ntohs(*(uint16_t *)(&resp.attributes[7]));
             clients[0].client_port = p;
             
-            char a;
+            
             int usrnemlen = resp.attributes[16];
             char tempusrnem[ usrnemlen ];
             for(int i = 17; i < 16 + usrnemlen; i++)
@@ -120,13 +147,13 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
                     // printf("%d",p);
                     // fflush(stdout);
 
-                    char a;
+                    
                     int clientusrnemlen = resp.attributes[16];
                     char tempclientusrnem[ clientusrnemlen ];
-                    for(int i = 17; i < 16 + clientusrnemlen; i++)
+                    for(int u = 17; u < 16 + clientusrnemlen; u++)
                     {
-                        a = (char)resp.attributes[i];
-                        tempclientusrnem[ i - 17 ] = a;
+                        a = (char)resp.attributes[u];
+                        tempclientusrnem[ u - 17 ] = a;
                     }
                     printf("\n%s",tempclientusrnem);
                     
@@ -147,7 +174,7 @@ void client_stage(CLIENT_MSG resp , CLIENT *clients, int arrclientlen ,int clien
 void life_cycle(int sockfd,int refreshsock,struct sockaddr_in server_addr, CLIENT clients[], int bcklog)
 {
      pthread_t UpdateThread;
-    CLIENT_MSG update;
+    CLIENT_MSG update = {0};
     bzero(&update,sizeof(update));
     int len = sizeof(server_addr);
 
@@ -160,17 +187,17 @@ void life_cycle(int sockfd,int refreshsock,struct sockaddr_in server_addr, CLIEN
         .arrsize = bcklog
     };
 
-    pthread_t refreshNatEntryThread;
+    // pthread_t refreshNatEntryThread;
     CLIENT_MSG msg;
     bzero(&msg,sizeof(msg));
 
-    struct RefreshThreadParams rtp = {
-        .msg = msg,
-        .clientfd = sockfd,
-	.refreshfd = refreshsock,
-        .address = server_addr,
-        .address_len = len
-    };
+    // struct RefreshThreadParams rtp = {
+    //     .msg = msg,
+    //     .clientfd = sockfd,
+	// .refreshfd = refreshsock,
+    //     .address = server_addr,
+    //     .address_len = len
+    // };
 
     pthread_t recvThread;
     
@@ -236,19 +263,20 @@ void life_cycle(int sockfd,int refreshsock,struct sockaddr_in server_addr, CLIEN
 int main()
 {
 
-    int sockfd, refreshsock;
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    int refreshsock = socket(AF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in client_addr, refresh_addr, server_addr;
 
      struct timeval reftimeout;      
     reftimeout.tv_sec = 15;
     reftimeout.tv_usec = 0;
 
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if (sockfd < 0)
     {
         printf("Socket failed lol");
     }
 
-    if ((refreshsock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if (refreshsock < 0)
     {
         printf("Socket failed lol");
     }
@@ -289,9 +317,7 @@ int main()
     }
 
 
-    socklen_t addrsize;
-
-    int conn;
+    socklen_t addrsize = sizeof(struct sockaddr_in);
 
      printf("Enter 1 for client, 2 for creating room:");
     short choice;
@@ -307,47 +333,53 @@ int main()
     char username[13];
     fgets(username,sizeof(username),stdin);
 
-    CLIENT_MSG req;
-    CLIENT_MSG resp;
-    bzero(&req,sizeof(req));
-    bzero(&resp,sizeof(resp));
+    // CLIENT_MSG req;
+    // bzero(&req,sizeof(req));
+    // CLIENT_MSG resp;
+    // bzero(&resp,sizeof(resp));
     int len = sizeof(server_addr);
 
-    CLIENT_MSG refreshsockf_info;
-    bzero(&refreshsockf_info,sizeof(refreshsockf_info));
-    refreshsockf_info.message_type = htons(0x0044);
+    // CLIENT_MSG refreshsockf_info;
+    // bzero(&refreshsockf_info,sizeof(refreshsockf_info));
+    // refreshsockf_info.message_type = htons(0x0044);
 
-    CLIENT_MSG refreshsockf_rsp;
-    bzero(&refreshsockf_rsp,sizeof(refreshsockf_rsp));
+    // CLIENT_MSG refreshsockf_rsp;
+    // bzero(&refreshsockf_rsp,sizeof(refreshsockf_rsp));
 
-    CLIENT_MSG hello_pkt;
-    bzero(&hello_pkt,sizeof(hello_pkt));
-    hello_pkt.message_type = htons(0x0022);    
+    CLIENT_MSG message = {0};
+    bzero(&message,sizeof(message));
 
-    int pom;    
+    SEND_KEY_MSG sendkeymsg = {0};
+    bzero(&sendkeymsg,sizeof(sendkeymsg));
+
+
+    // char* server_modulus = (char*)calloc(158, sizeof(char));
+    // char* server_exponent = (char*)calloc(6, sizeof(char));
 
     if(choice == 1)
     {
-        make_find_req(req,sockfd,roomname,username,server_addr,len);
-         conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);        
-         int bcklg = resp.attributes[14];
-         pom = bcklg;
+        make_find_req(message,sockfd,roomname,username,server_addr,len);
+        bzero(&message,sizeof(message));
+         recvfrom(sockfd,&message,sizeof(message),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);        
+         int bcklg = message.attributes[14];
          CLIENT clients[bcklg];
          bzero(&clients,sizeof(clients));     
-         client_stage(resp,clients,bcklg,sockfd,roomname,strlen(roomname),server_addr,addrsize);
+         client_stage(message,clients,sockfd,roomname,strlen(roomname),server_addr,addrsize);
 
 	while(true)
 	{
-	     sendto(refreshsock,&refreshsockf_info,sizeof(refreshsockf_info),0,(struct sockaddr*)&server_addr,addrsize);
+        bzero(&message,sizeof(message));
+        message.message_type = htons(0x0044);         
+	     sendto(refreshsock,&message,sizeof(message),0,(struct sockaddr*)&server_addr,addrsize);
 	     
-	     bzero(&refreshsockf_info,sizeof(refreshsockf_info));
-             int rfshrsp = recvfrom(refreshsock,&refreshsockf_rsp,sizeof(refreshsockf_rsp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
+	     bzero(&message,sizeof(message));
+        int rfshrsp = recvfrom(refreshsock,&message,sizeof(message),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
 	     
 	    if(rfshrsp > 0)
 	    {
-		printf("%d",ntohs(refreshsockf_rsp.message_type));
+		printf("%d",ntohs(message.message_type));
 		fflush(stdout);
-		if(ntohs(refreshsockf_rsp.message_type) == 0x0404)
+		if(ntohs(message.message_type) == 0x0404)
 		{
 		    break;
 		}
@@ -371,109 +403,47 @@ int main()
     }
     else if(choice == 2)
     {
-        sendto(sockfd,&hello_pkt,sizeof(hello_pkt),0,(struct sockaddr*)&server_addr,addrsize);
+        message.message_type = htons(0x0022);
+        sendto(sockfd,&message,sizeof(message),0,(struct sockaddr*)&server_addr,sizeof(server_addr));        
+        // printf("0x%02X",req.message_type);
+        // perror("sendto");
+        // fflush(stdout);
+        recvfrom(sockfd,&sendkeymsg,sizeof(sendkeymsg),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
+        
+        handle_key(sendkeymsg);
 
-        CLIENT clients[10];
-        bzero(&clients,sizeof(clients));
-        make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);
-        conn = recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
+
+    //     CLIENT clients[10];
+    //     bzero(&clients,sizeof(clients));
+    //     make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);
+    //     recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
         
-        while(true)
-	{
-	     sendto(refreshsock,&refreshsockf_info,sizeof(refreshsockf_info),0,(struct sockaddr*)&server_addr,addrsize);
+    //     while(true)
+	//     {
+	//      sendto(refreshsock,&refreshsockf_info,sizeof(refreshsockf_info),0,(struct sockaddr*)&server_addr,addrsize);
 	     
-	     bzero(&refreshsockf_rsp,sizeof(refreshsockf_rsp));
-             int rfshrsp = recvfrom(refreshsock,&refreshsockf_rsp,sizeof(refreshsockf_rsp),MSG_WAITALL,NULL,NULL);
+	//      bzero(&refreshsockf_rsp,sizeof(refreshsockf_rsp));
+    //          int rfshrsp = recvfrom(refreshsock,&refreshsockf_rsp,sizeof(refreshsockf_rsp),MSG_WAITALL,NULL,NULL);
 	     
-	    if(rfshrsp > 0)
-	    {
-		if(ntohs(refreshsockf_rsp.message_type) == 0x0404)
-		{
-		    break;
-		}
- 	    }
-	}
+	//     if(rfshrsp > 0)
+	//     {
+	// 	if(ntohs(refreshsockf_rsp.message_type) == 0x0404)
+	// 	{
+	// 	    break;
+	// 	}
+ 	//     }
+	// }
         
-	life_cycle(sockfd,refreshsock,server_addr,clients,10);
+	// life_cycle(sockfd,refreshsock,server_addr,clients,10);
     }else
     {
         exit(EXIT_FAILURE);
     }
 
+    // free(server_modulus);
+    // free(server_exponent);
     
-
-    // struct sm find_req;
-    // bzero(&find_req, sizeof(find_req));
-
-    // find_req.message_type = 0x01;
-    // for (int i = 0; i < sizeof(find_req.trasaction_id) / sizeof(find_req.trasaction_id[0]); i++)
-    // {
-    //     find_req.trasaction_id[i] = rand() % 256;
-    // }
-
-    // find_req.attributes[1] = 0x01;
-
-    // int16_t port = 0x317A;
-    // find_req.attributes[7] = (port >> 8) & 0xFF;
-    // find_req.attributes[8] = port & 0xFF;
-    // uint32_t ipadd = 0x4E50C3EA;
-    // uint16_t lowpart = ipadd & 0xFFFF;
-    // uint16_t highpart = (ipadd >> 16) & 0xFFFF;
-    // find_req.attributes[9] = (highpart >> 8) & 0xFF;
-    // find_req.attributes[10] = highpart & 0xFF;
-    // find_req.attributes[11] = (lowpart >> 8) & 0xFF;
-    // find_req.attributes[12] = lowpart & 0xFF;
-    // find_req.attributes[13] = 0x02;
-    // char *chatname = "Valve";
-    // find_req.attributes[14] = strlen(chatname);
-    // char let;
-    // int a;
-    // for (int i = 15; i < 15 + strlen(chatname); i++)
-    // {
-    //     let = chatname[i - 15];
-    //     a = (int)let;
-    //     find_req.attributes[i] = a;
-    // }
-    // char *usrname = "Franta";
-    // find_req.attributes[16 + strlen(chatname)] = strlen(usrname);
-    // for (int i = 17 + strlen(chatname); i < 17 + strlen(chatname) + strlen(usrname); i++)
-//     {
-//         let = usrname[i - (17 + strlen(chatname))];
-//         a = (int)let;
-//         find_req.attributes[i] = a;
-//     }
-//     //    find_req.attributes[18 + strlen(chatname) + strlen(usrname)] = 0x11;
-//     //    find_req.attributes[19 + strlen(chatname) + strlen(usrname)] = 0xA;
-
-//     u_int16_t Value_size = 0;
-
-//        find_req.message_length = htons(sizeof(find_req.attributes));
-//        find_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
-
-//     send(sockfd, &find_req, sizeof(find_req), 0);
-
-//     struct sm response;
-//     recv(sockfd, &response, sizeof(response), 0);
-
-//     if (response.message_type == 0x03)
-//     {
-//         int16_t myport = ntohs(*(int16_t *)(&response.attributes[7]));
-//         printf("%d", myport);
-//     }
-//     if (response.message_type == 0x08)
-//     {
-//         char *ms = malloc(15);
-//         int l = response.attributes[7];
-//         for (int i = 8; i < 8 + l; i++)
-//         {
-//             let = (char)response.attributes[i];
-//             ms[i - (8)] = let;
-//         }
-//         printf("%s\n", ms);
-//         free(ms);
-//     }
-    
-    
+    close(refreshsock);
     close(sockfd);
 
     return 0;

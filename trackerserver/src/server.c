@@ -75,7 +75,8 @@ int main()
         strcpy(temp,sourceip);
         char let;
         
-        
+        // printf("0x%02X\n",req.message_type);
+        // fflush(stdout);
         if(req.message_type == 0x0001)
         {
             make_find_res(req,server_sockfd,sourceip,port,client_addr,addr_size);
@@ -84,9 +85,9 @@ int main()
             broadcast_new_client(server_sockfd,port,temp,client_usrname,chatname);
         }
 
-        if(ntohs(req.message_type) == 0x200)
-        {
-            send_key(server_sockfd,client_addr,addr_size,state);
+        if(req.message_type == 0x2200)
+        {    
+            send_key(server_sockfd,client_addr,state);
             // make_alloc_res(req,server_sockfd,sourceip,port,client_addr,addr_size);
         }
         free(chatname);

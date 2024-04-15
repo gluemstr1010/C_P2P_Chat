@@ -15,12 +15,11 @@
 
 void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len)
 {
-    bzero(&find_req, sizeof(find_req));
      time_t t;
     srand((unsigned)time(&t));
 
     find_req.message_type = 0x0001;
-     for (int i = 0; i < sizeof(find_req.trasaction_id) / sizeof(find_req.trasaction_id[0]); i++)
+     for (size_t i = 0; i < sizeof(find_req.trasaction_id) / sizeof(find_req.trasaction_id[0]); i++)
     {
         find_req.trasaction_id[i] = rand() % 256;
     }
@@ -32,7 +31,7 @@ void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char userna
     char let;
     int a;
 
-    for(int i = 15; i < 14 + strlen(roomname); i++)
+    for(size_t i = 15; i < 14 + strlen(roomname); i++)
     {
         let = roomname[i - 15];
         a = (int)let;
@@ -40,7 +39,7 @@ void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char userna
     }
 
     find_req.attributes[16 + strlen(roomname)] = strlen(username);
-    for (int i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(username); i++)
+    for (size_t i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(username); i++)
     {
         let = username[i - (17 + strlen(roomname))];
         a = (int)let;
@@ -68,7 +67,7 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
     srand((unsigned)time(&t));
 
     alloc_req.message_type = 0x0002;
-     for (int i = 0; i < sizeof(alloc_req.trasaction_id) / sizeof(alloc_req.trasaction_id[0]); i++)
+     for (size_t i = 0; i < sizeof(alloc_req.trasaction_id) / sizeof(alloc_req.trasaction_id[0]); i++)
     {
         alloc_req.trasaction_id[i] = rand() % 256;
     }
@@ -80,7 +79,7 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
     char let;
     int a;
 
-    for(int i = 15; i < 14 + strlen(roomname); i++)
+    for(size_t i = 15; i < 14 + strlen(roomname); i++)
     {
         let = roomname[i - 15];
         a = (int)let;
@@ -88,7 +87,7 @@ void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char us
     }
 
     alloc_req.attributes[16 + strlen(roomname)] = strlen(username);
-    for (int i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(username); i++)
+    for (size_t i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(username); i++)
     {
         let = username[i - (17 + strlen(roomname))];
         a = (int)let;
@@ -133,12 +132,13 @@ void* refresh_NAT_entry(void* arg)
             sleep(REFRESH_INTERVAL);
         }
     }
+    free(params);
 }
 
 void* listen_for_Update(void* arg)
 {
     struct UpdateThreadParams* params = (struct UpdateThreadParams*)arg;
-    int j;
+    
     socklen_t sz = sizeof(params->address);
      struct timeval recvtimeout;      
     recvtimeout.tv_sec = 0;
@@ -152,7 +152,7 @@ void* listen_for_Update(void* arg)
 
     while (1)
     {
-        j = recvfrom(params->refreshfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&params->address,&sz);
+        recvfrom(params->refreshfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&params->address,&sz);
         // if( ( <= 0 )
         // {
         //     printf("\n Last error was: %s",strerror(errno));
@@ -175,19 +175,19 @@ void* listen_for_Update(void* arg)
                     int roomnamelen = params->msg.attributes[14];
                     char temproomname[ roomnamelen ];
                     bzero(&temproomname,sizeof(temproomname));
-                    for(int i = 15; i < 15 + roomnamelen; i++)
+                    for(int g = 15; g < 15 + roomnamelen; g++)
                     {
-                        a = (char)params->msg.attributes[i];
-                        temproomname[ i - 15 ] = a;
+                        a = (char)params->msg.attributes[g];
+                        temproomname[ g - 15 ] = a;
                     }
 
                     int usrnemlen = params->msg.attributes[16 + roomnamelen];
                     char tempusrnem[ usrnemlen ];
                     bzero(&tempusrnem,sizeof(tempusrnem));
-                    for(int i = 17 + roomnamelen; i < 17 + usrnemlen + roomnamelen; i++)
+                    for(int g = 17 + roomnamelen; g < 17 + usrnemlen + roomnamelen; g++)
                     {
                         a = (char)params->msg.attributes[i];
-                        tempusrnem[ i - (17 + roomnamelen) ] = a;
+                        tempusrnem[ g - (17 + roomnamelen) ] = a;
                     }
 
                     params->clients[i].usrname = (char *)malloc( usrnemlen );
@@ -214,16 +214,16 @@ void* listen_for_Update(void* arg)
         bzero(&params->msg,sizeof(params->msg));
         fflush(stdout);
     }
+    free(params);
 }
 
 void* recv_msg(void* arg)
 {
     struct RecvThreadParams* params = (struct RecvThreadParams*)arg;
-    socklen_t sz = sizeof(params->address);
 
    while(1)
    {
-	 int j = recvfrom(params->clientfd,&params->msg,sizeof(params->msg),0,NULL,NULL);
+	 recvfrom(params->clientfd,&params->msg,sizeof(params->msg),0,NULL,NULL);
 
  //   if(params->msg.message_type != 0)
  //   {
@@ -250,6 +250,7 @@ void* recv_msg(void* arg)
             fflush(stdout);
         }
    }
+   free(params);
 }
 
 char* convert_IP_tochar(uint8_t ipadd[])
@@ -261,9 +262,6 @@ char* convert_IP_tochar(uint8_t ipadd[])
     bzero(&temp,sizeof(temp));
     bzero(&pom,sizeof(pom));
 
-
-    char let;
-    int k = 0;
     for (int i = 0; i < 4; i++)
     {
         int a = ipadd[i];
@@ -294,7 +292,7 @@ void* send_msg(void* arg)
         fgets(msg,sizeof(msg),stdin);
 
         params->msg.message_type = 0x0076;
-        for (int i = 0; i < sizeof(params->msg.trasaction_id) / sizeof(params->msg.trasaction_id[0]); i++)
+        for (size_t i = 0; i < sizeof(params->msg.trasaction_id) / sizeof(params->msg.trasaction_id[0]); i++)
         {
             params->msg.trasaction_id[i] = rand() % 256;
         }
@@ -303,7 +301,7 @@ void* send_msg(void* arg)
         char let;
         int a;
 
-        for(int i = 2; i < 2 + strlen(msg); i++)
+        for(size_t i = 2; i < 2 + strlen(msg); i++)
         {
             let = msg[i - 2];
             a = (int)let;
@@ -320,7 +318,7 @@ void* send_msg(void* arg)
                 client.sin_family = AF_INET;
                 client.sin_port = htons(params->clients[i].client_port);
                 inet_pton(AF_INET,convert_IP_tochar(params->clients[i].client_addr),&(client.sin_addr));
-                int o = sendto(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&client,sizeof(client));
+                sendto(params->clientfd,&params->msg,sizeof(params->msg),0,(struct sockaddr*)&client,sizeof(client));
 
                 char ipAddress[INET_ADDRSTRLEN]; // INET_ADDRSTRLEN is the maximum size for IPv4 addresses
 
@@ -342,4 +340,5 @@ void* send_msg(void* arg)
 
         
     }
+    free(params);
 }

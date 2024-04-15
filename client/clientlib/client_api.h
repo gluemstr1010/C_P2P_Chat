@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define MINLENGTH 56
+#define SEND_KEY_MSG_MINLENGTH 170
 
 struct cm
 {
@@ -13,6 +14,14 @@ struct cm
     uint8_t attributes[MINLENGTH];
 };
 typedef struct cm CLIENT_MSG;
+
+struct skm
+{
+    int16_t message_type;
+    int16_t message_length;
+    uint8_t attributes[SEND_KEY_MSG_MINLENGTH];
+};
+typedef struct skm SEND_KEY_MSG;
 
 struct si
 {
@@ -63,6 +72,7 @@ void* recv_msg(void* arg);
 void* send_msg(void* arg);
 
 void prcess_find_resp(CLIENT_MSG find_res);
+
 char* convert_IP_tochar(uint8_t ipadd[]);
 
 #endif
