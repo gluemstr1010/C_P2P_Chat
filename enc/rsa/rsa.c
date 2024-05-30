@@ -2,53 +2,65 @@
 #include <string.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <stdbool.h>
 #include <time.h>
 #include <gmp.h>
+#include "../inc/rsa_api.h"
 
-char* generate_prime(gmp_randstate_t state)
-{  
-    mpz_t rnd, iterator,pom, tmp ;
-    mpz_init(rnd);
-    mpz_init(pom);
-    mpz_init(iterator);
-    mpz_init(tmp);
+// SOMEHOW EDIT THIS, SO IT WILL BE MINE
+bool is_prime(mpz_t n, gmp_randstate_t state, int iterations) {
+    if (mpz_cmp_ui(n, 2) < 0) return false;
+    if (mpz_cmp_ui(n, 2) == 0) return true;
+    if (mpz_even_p(n)) return false; // Even numbers > 2 are not prime
 
-    mpz_set_str(pom,"1",10);
-    
-    repeat:
+    mpz_t n_minus_1, a, x, exp, n_minus_3, tmp;
+    mpz_inits(n_minus_1, a, x, exp, n_minus_3, tmp, NULL);
 
-    mpz_urandomb(rnd, state, 256);
+    mpz_sub_ui(n_minus_1, n, 1);
+    mpz_sub_ui(n_minus_3, n, 3);
 
-    mpz_set_ui(iterator,3);
+    for (int i = 0; i < iterations; ++i) {
+        // Generate a random base 'a' in the range [2, n - 2]
+        mpz_urandomm(a, state, n_minus_3); // Avoid 0 and n-1
+        mpz_add_ui(a, a, 2); // Adjust to [2, n - 2]
 
-    while(1)
-    {
-        
-         int check_iterator = mpz_cmp_ui(iterator, 10);
+        // Calculate x = a^(n-1) mod n using modular exponentiation
+        mpz_powm(x, a, n_minus_1, n);
 
-         mpz_mod(tmp,rnd,iterator);
-
-         int check = mpz_cmp_ui(tmp,0);
-
-         if(check_iterator > 0)
-         {
-            break;
-         }
-
-         if(check == 0)
-         {
-            goto repeat;
-         }
-          mpz_add_ui(iterator,iterator,1);
+        // Check if x == 1 or x == n - 1
+        if (mpz_cmp_ui(x, 1) != 0 && mpz_cmp(x, n_minus_1) != 0) {
+            mpz_clears(n_minus_1, a, x, exp, n_minus_3, tmp, NULL);
+            return false; // Definitely composite
+        }
     }
 
-    char* random = mpz_get_str(NULL,10,rnd);
+    mpz_clears(n_minus_1, a, x, exp, n_minus_3, tmp, NULL);
+    return true; // Probably prime
+}
+// SOMEHOW EDIT THIS, SO IT WILL BE MINE
+char* generate_prime(gmp_randstate_t state, int bits) {
+    mpz_t rnd;
+    mpz_init(rnd);
+
+    while (true) {
+        // Generate a random number of the specified bits
+        mpz_urandomb(rnd, state, bits);
+
+        // Ensure the number is odd
+        mpz_setbit(rnd, 0);
+
+        // Set the most significant bit to ensure the number has 'bits' length
+        mpz_setbit(rnd, bits - 1);
+
+        // Check if the number is prime using Miller-Rabin with 20 iterations
+        if (is_prime(rnd, state, 20)) {
+            break;
+        }
+    }
+
+    char* random = mpz_get_str(NULL, 10, rnd);
 
     mpz_clear(rnd);
-    mpz_clear(tmp);
-    mpz_clear(pom);
-    mpz_clear(iterator);
-    
     return random;
 }
 
@@ -194,7 +206,7 @@ char* get_d(char* eul,char* e)
     return yy2;
 }
 
-void encrypt(char message[],char* e,char* n,char encrypted_msg[][78])
+void encrypt(char message[],char* e,char* n, char encrypted_msg[20][280] )
 {
     mpz_t pom,chrr, modulus,exponent;
     mpz_init(pom);
@@ -223,7 +235,7 @@ void encrypt(char message[],char* e,char* n,char encrypted_msg[][78])
     mpz_clear(exponent);
 }
 
-void decrypt(char encrypted_msg[][64],char* dd,char* n,char decrypted_message[], int msglen)
+void decrypt(char encrypted_msg[20][280],char* dd,char* n,char* decrypted_message, int msglen)
 {
     mpz_t pom,chrr,d,modulus;
     mpz_init(pom);
@@ -234,12 +246,10 @@ void decrypt(char encrypted_msg[][64],char* dd,char* n,char decrypted_message[],
     mpz_set_str(d,dd,10);
     mpz_set_str(modulus,n,10);
 
-    for(int i = 0; i < msglen - 2 ; i++)
+    for(int i = 0; i < msglen; i++)
     {
-            char *chr = encrypted_msg[i];
-            int arrval = atoi(chr);
-
-            mpz_set_ui(chrr,arrval);
+                char *chr = encrypted_msg[i];
+                mpz_set_str(chrr,chr,10);
             mpz_powm(pom,chrr,d,modulus);
             // mpz_mod(pom,pom,modulus);
 
@@ -249,9 +259,10 @@ void decrypt(char encrypted_msg[][64],char* dd,char* n,char decrypted_message[],
             char getchar = (char)temp;
             decrypted_message[i] = getchar;
              free(pomstr);  
-            //  free(chr);
     }
 
+    decrypted_message[msglen] = "\0";
+    
     mpz_clear(pom);
     mpz_clear(chrr);
     mpz_clear(modulus);

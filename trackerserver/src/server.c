@@ -10,10 +10,29 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <time.h>
+#include <openssl/sha.h>
 #include "server_api.h"
+#include "../../enc/inc/rsa_api.h"
+#include "../../serialization/inc/serialize_api.h"
 // #include "../../encryption/rsa/rsa.c"
 
 #define PORT 21504
+
+void createShaHash(const char *str, unsigned char outputBuffer[64])
+{
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, str, strlen(str));
+    SHA256_Final(outputBuffer, &sha256);
+}
+
+
+void hashToHexString(const unsigned char *hash, char hexString[65]) {
+    for (int i = 0; i < 32; i++) {
+        sprintf(hexString + (i * 2), "%02x", hash[i]);
+    }
+    hexString[64] = '\0';  // Null-terminate the string
+}
 
 int main()
 {
@@ -49,49 +68,142 @@ int main()
     addr_size = sizeof(client_addr);
     gmp_randstate_t state;
     gmp_randinit_default(state);
-    gmp_randseed_ui(state, time(NULL));
 
-    SERV_MSG req;
+    SEND_REQ send_req = {0};
+
+    SEND_KEY_MSG init = {0};
 
     u_int16_t port;
     char sourceip[16];
     while(true)
     {
-         bzero(&req,sizeof(req));
+        gmp_randseed_ui(state, time(NULL));
+        srand(time(NULL));
+         bzero(&init,sizeof(init));
+        //  init.attribute1 = (char*)calloc(strlen(270), sizeof(char));
+        //  init.attribute2 = (char*)calloc(strlen(6), sizeof(char));
          bzero(&client_addr,sizeof(client_addr));
          bzero(&port,sizeof(port));
          bzero(&sourceip,sizeof(sourceip));
 
-        conn = recvfrom(server_sockfd,&req ,sizeof(req),0,(struct sockaddr*)&client_addr,&addr_size);
+        conn = recvfrom(server_sockfd,&init ,sizeof(init),0,(struct sockaddr*)&client_addr,&addr_size);
         
         if(conn > 0)
         {
             port = ntohs(client_addr.sin_port);
         inet_ntop(AF_INET, &(client_addr.sin_addr),sourceip, INET_ADDRSTRLEN);
-         char *chatname = malloc(13);
-        char *client_usrname = malloc(13);
         char temp[16];
         bzero(&temp,sizeof(temp));
         strcpy(temp,sourceip);
-        char let;
+        // char let;
         
         // printf("0x%02X\n",req.message_type);
         // fflush(stdout);
-        if(req.message_type == 0x0001)
-        {
-            make_find_res(req,server_sockfd,sourceip,port,client_addr,addr_size);
-            process_req(req,chatname,client_usrname,let,req.attributes[14]);
-            
-            broadcast_new_client(server_sockfd,port,temp,client_usrname,chatname);
-        }
+        
 
-        if(req.message_type == 0x2200)
+        if(init.message_type == 0x2200)
         {    
-            send_key(server_sockfd,client_addr,state);
-            // make_alloc_res(req,server_sockfd,sourceip,port,client_addr,addr_size);
+            char* client_modulus = (char*)calloc(270, sizeof(char));
+            char* client_exponent = (char*)calloc(6, sizeof(char));   
+
+            strcpy(client_modulus,init.attribute1);
+            strcpy(client_exponent,init.attribute2);         
+
+            int buffer_size = snprintf(NULL, 0, "\"modulus\":\n\t\"%s\"\n\"exponent\":\n\t\"%s\"\n", client_modulus,client_exponent) + 1;
+    
+            // Allocate memory for the final string
+            char *formatted_string = (char*)calloc(buffer_size, sizeof(char));
+            if (!formatted_string) {
+                fprintf(stderr, "Memory allocation failed\n");
+                return 1;
+            }
+
+            // Format the string with the variables
+            sprintf(formatted_string, "\"modulus\":\n\t\"%s\"\n\"exponent\":\n\t\"%s\"\n", client_modulus, client_exponent);
+            unsigned char shaHash[64];
+            char getHash[65];
+            // bzero(&shaHash,sizeof(shaHash));
+            memset(shaHash,0,sizeof(shaHash));
+
+            createShaHash(formatted_string,shaHash);
+            hashToHexString(shaHash, getHash);        // GETTING THE HASH
+
+            uint16_t uid = (unsigned long long)rand() * (unsigned long long)RAND_MAX + rand();
+
+            int checkDir = CheckDirExistence(uid);
+
+            char* p = generate_prime(state,428);
+            char* q = generate_prime(state,428); // generate primes
+        
+            mpz_t n,pp,qq, eul;
+            mpz_init(n);
+            mpz_init(pp);
+            mpz_init(qq);
+            mpz_init(eul);
+
+            mpz_set_str(pp,p,10);
+            mpz_set_str(qq,q,10);
+
+            mpz_mul(n,pp,qq);
+
+            char* mod = mpz_get_str(NULL,10,n); // get modulus
+
+            mpz_sub_ui(pp,pp,1);
+            mpz_sub_ui(qq,qq,1);
+
+            mpz_mul(eul,pp,qq);
+
+            char* euler = mpz_get_str(NULL,10,eul); // get phi of n
+
+            char* exponent = malloc(6);
+            strcpy(exponent,"65537"); // exponent
+
+            char* pd = get_d(euler,exponent); // private d
+
+            WriteKeys(uid,client_modulus,client_exponent,mod,exponent,pd); // WRITE KEYS TO FILES
+
+            free(client_modulus);
+            free(client_exponent);
+
+            // // // printf("p:%s\n",p);
+            // // // printf("q:%s\n",q);
+            // // // printf("phi:%s\n",euler);
+            // // // printf("mod:%s\n",mod);
+            // // printf("private d:%s\n",pd);
+
+            send_key(server_sockfd,client_addr,mod,exponent,uid);
+
+            recvfrom(server_sockfd,&send_req ,sizeof(send_req),0,(struct sockaddr*)&client_addr,&addr_size); 
+            // listen for request
+
+            uint8_t roomnamelen = send_req.xlen_r;
+            uint8_t usrnamelen = send_req.xlen_u;
+            
+            char* roomname = (char*)calloc(roomnamelen, sizeof(char));
+            char* usrname = (char*)calloc(usrnamelen, sizeof(char));
+
+            decrypt(send_req.enc_room,pd,mod,roomname,roomnamelen);
+            decrypt(send_req.enc_usr,pd,mod,usrname,usrnamelen);
+            
+            roomname[roomnamelen] = '\0';
+            usrname[usrnamelen] = '\0';
+
+            // printf("0x%02X",send_req.message_type);
+            if(send_req.message_type == 0x02)
+            {
+                  make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid);
+            }
+            if(send_req.message_type == 0x01)
+            {   
+                make_find_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,exponent,mod,uid);
+                broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
+            }
+
+            // printf("%s",mod);
+            // fflush(stdout);          
+
+            mpz_clears(n,eul,pp,qq,NULL);
         }
-        free(chatname);
-        free(client_usrname);
         }
         
         

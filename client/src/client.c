@@ -30,33 +30,6 @@ void process_err_resp(CLIENT_MSG resp)
         free(ms);
 }
 
-void handle_key(SEND_KEY_MSG msg)
-{
-    for(size_t i = 0; i < 100; i++ )
-    {
-        printf("%d",msg.attributes[i]);
-        fflush(stdout);
-    }
-
-    // for(int i = 2; i < (2 + e_len); i++)
-    // {
-    //     int c = (char)msg.attributes[i];
-    //     printf("%d",c);
-    //     fflush(stdout);
-    // }
-
-
-
-    // for(int i = (4 + e_len); i < e_len + m_len ; i++ )
-    // {
-    //     sm[(4 + e_len)] = (char)msg.attributes[i];
-    // }
-   
-    // printf("%s\n",se);
-    // // printf("%s\n",sm);
-    // fflush(stdout);
-}
-
 void client_stage(CLIENT_MSG resp , CLIENT *clients ,int clientfd,char roomname[] , int roomname_len,struct sockaddr_in address, socklen_t addrsize )
 {
 
@@ -352,13 +325,16 @@ int main()
     SEND_KEY_MSG sendkeymsg = {0};
     bzero(&sendkeymsg,sizeof(sendkeymsg));
 
+    SEND_REQ req = {0};
+    bzero(&req,sizeof(req));
 
-    // char* server_modulus = (char*)calloc(158, sizeof(char));
-    // char* server_exponent = (char*)calloc(6, sizeof(char));
+
+    char* server_modulus = (char*)calloc(270, sizeof(char));
+    char* server_exponent = (char*)calloc(6, sizeof(char));
 
     if(choice == 1)
     {
-        make_find_req(message,sockfd,roomname,username,server_addr,len);
+        make_find_req(req,sockfd,roomname,username,server_addr,len,server_modulus,server_exponent);
         bzero(&message,sizeof(message));
          recvfrom(sockfd,&message,sizeof(message),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);        
          int bcklg = message.attributes[14];
@@ -410,13 +386,13 @@ int main()
         // fflush(stdout);
         recvfrom(sockfd,&sendkeymsg,sizeof(sendkeymsg),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
         
-        handle_key(sendkeymsg);
+        handle_key(sendkeymsg,server_modulus,server_exponent);
 
 
-    //     CLIENT clients[10];
-    //     bzero(&clients,sizeof(clients));
-    //     make_alloc_req(req,sockfd,roomname,username,10, server_addr,len);
-    //     recvfrom(sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
+        CLIENT clients[10];
+        bzero(&clients,sizeof(clients));
+        make_alloc_req(req,sockfd,roomname,username,10, server_addr,len,server_modulus,server_exponent);
+        recvfrom(sockfd,&message,sizeof(message),MSG_WAITALL,(struct sockaddr*)&server_addr,&addrsize);
         
     //     while(true)
 	//     {

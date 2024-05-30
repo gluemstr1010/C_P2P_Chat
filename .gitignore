@@ -3,10 +3,13 @@
 !rsa/
 !trackerserver/
 !src/
+!inc/
 !client/
 !clientlib/
 !enc/
 !trackerlib/
+!serialization/
+!dat/
 !*.c
 !*.h
 !*.md

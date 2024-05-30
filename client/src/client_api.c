@@ -8,101 +8,89 @@
 #include <sys/time.h>
 #include <time.h>
 #include <errno.h>
+#include <gmp.h>
 #include "client_api.h"
+#include "../../enc/inc/rsa_api.h"
 
 #define PACKETSTOSEND 10
 #define REFRESH_INTERVAL 60
+#define MAXENCLETLEN 260
 
-void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len)
+void make_find_req(SEND_REQ find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len,char* m,char* e)
 {
-     time_t t;
-    srand((unsigned)time(&t));
+//      time_t t;
+//     srand((unsigned)time(&t));
 
-    find_req.message_type = 0x0001;
-     for (size_t i = 0; i < sizeof(find_req.trasaction_id) / sizeof(find_req.trasaction_id[0]); i++)
-    {
-        find_req.trasaction_id[i] = rand() % 256;
-    }
-    find_req.attributes[1] = 0x01;
+//     find_req.message_type = 0x0001;
+//      for (size_t i = 0; i < sizeof(find_req.trasaction_id) / sizeof(find_req.trasaction_id[0]); i++)
+//     {
+//         find_req.trasaction_id[i] = rand() % 256;
+//     }
+//     find_req.attributes[1] = 0x01;
 
-    find_req.attributes[13] = 0x01;
-    find_req.attributes[14] = strlen(roomname);
+//     find_req.attributes[13] = 0x01;
+//     find_req.attributes[14] = strlen(roomname);
     
-    char let;
-    int a;
+//     char let;
+//     int a;
 
-    for(size_t i = 15; i < 14 + strlen(roomname); i++)
-    {
-        let = roomname[i - 15];
-        a = (int)let;
-        find_req.attributes[i] = a;
-    }
+//     for(size_t i = 15; i < 14 + strlen(roomname); i++)
+//     {
+//         let = roomname[i - 15];
+//         a = (int)let;
+//         find_req.attributes[i] = a;
+//     }
 
-    find_req.attributes[16 + strlen(roomname)] = strlen(username);
-    for (size_t i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(username); i++)
-    {
-        let = username[i - (17 + strlen(roomname))];
-        a = (int)let;
-        find_req.attributes[i] = a;
-    }
+//     find_req.attributes[16 + strlen(roomname)] = strlen(username);
+//     for (size_t i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(username); i++)
+//     {
+//         let = username[i - (17 + strlen(roomname))];
+//         a = (int)let;
+//         find_req.attributes[i] = a;
+//     }
 
-    u_int16_t Value_size = 0;
+//     u_int16_t Value_size = 0;
 
-     find_req.message_length = htons(sizeof(find_req.attributes));
-     find_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
+//      find_req.message_length = htons(sizeof(find_req.attributes));
+//      find_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
 
-   int hh = sendto(clientfd,&find_req,sizeof(find_req),MSG_WAITALL,(struct sockaddr*)&address,address_len);
-   if( hh < 0)
-   {
-      printf("\n Last error was: %s",strerror(errno));
-      fflush(stdout);
-   }
+//    int hh = sendto(clientfd,&find_req,sizeof(find_req),MSG_WAITALL,(struct sockaddr*)&address,address_len);
+//    if( hh < 0)
+//    {
+//       printf("\n Last error was: %s",strerror(errno));
+//       fflush(stdout);
+//    }
     
 }
 
-void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char username[], int backlog, struct sockaddr_in address, int address_len)
+void make_alloc_req(SEND_REQ alloc_req, int clientfd, char roomname[], char username[], int backlog, struct sockaddr_in address, int address_len, char* m,char* e)
 {
     bzero(&alloc_req, sizeof(alloc_req));
-    time_t t;
-    srand((unsigned)time(&t));
+    // time_t t;
+    // srand((unsigned)time(&t));
 
     alloc_req.message_type = 0x0002;
-     for (size_t i = 0; i < sizeof(alloc_req.trasaction_id) / sizeof(alloc_req.trasaction_id[0]); i++)
-    {
-        alloc_req.trasaction_id[i] = rand() % 256;
-    }
-    alloc_req.attributes[1] = 0x02;
+    alloc_req.xlen_r = strlen(roomname);
+    alloc_req.xlen_u = strlen(username);
+    //  for (size_t i = 0; i < sizeof(alloc_req.trasaction_id) / sizeof(alloc_req.trasaction_id[0]); i++)
+    // {
+    //     alloc_req.trasaction_id[i] = rand() % 256;
+    // }
 
-    alloc_req.attributes[13] = 0x02;
-    alloc_req.attributes[14] = strlen(roomname);
-    
-    char let;
-    int a;
+    char enc_room[strlen(roomname)][MAXENCLETLEN];
+    memset(enc_room, '\0', sizeof(enc_room));
 
-    for(size_t i = 15; i < 14 + strlen(roomname); i++)
-    {
-        let = roomname[i - 15];
-        a = (int)let;
-        alloc_req.attributes[i] = a;
-    }
+     char enc_usr[strlen(username)][MAXENCLETLEN];
+    memset(enc_usr, '\0', sizeof(enc_usr));   
 
-    alloc_req.attributes[16 + strlen(roomname)] = strlen(username);
-    for (size_t i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(username); i++)
-    {
-        let = username[i - (17 + strlen(roomname))];
-        a = (int)let;
-        alloc_req.attributes[i] = a;
-    }
-       alloc_req.attributes[18 + strlen(roomname) + strlen(username)] = 0x11;
-       alloc_req.attributes[19 + strlen(roomname) + strlen(username)] = backlog;
+    encrypt(roomname,e,m,enc_room);
+    encrypt(username,e,m,enc_usr);     
 
-       u_int16_t Value_size = 0;
+    alloc_req.backlog = backlog;
 
-       alloc_req.message_length = htons(sizeof(alloc_req.attributes));
-       alloc_req.attributes[3] = ( htons(Value_size) >> 8 ) & 0xFF;
-    
-
-      sendto(clientfd,&alloc_req,sizeof(alloc_req),MSG_WAITALL,(struct sockaddr*)&address,address_len);
+     sleep(1);
+    sendto(clientfd,&alloc_req,sizeof(alloc_req),MSG_WAITALL,(struct sockaddr*)&address,address_len);
+     
 }
 
 void* refresh_NAT_entry(void* arg)
@@ -341,4 +329,31 @@ void* send_msg(void* arg)
         
     }
     free(params);
+}
+
+
+void handle_key(SEND_KEY_MSG msg, char* sm, char* se)
+{
+    
+    int16_t e_len = msg.attributes[1];
+    for(int i = 2; i < (2 + e_len); i++)
+    {
+        char c = (char)msg.attributes[i];
+        se[i - 2] = c;
+        // printf("%c",(char)msg.attributes[i]);
+        // fflush(stdout);
+    }
+
+    int m_len = msg.attributes[(3 + e_len )];
+
+    for(int i = (4 + e_len); i < 4 + e_len + m_len ; i++ )
+    {
+        sm[ i - (4 + e_len)] = (char)msg.attributes[i];
+        // printf("%c", (char)msg.attributes[i] );
+        // fflush(stdout);
+    }
+
+    // printf("%d\n",e_len);
+    // printf("%d\n",m_len);
+    // fflush(stdout);
 }

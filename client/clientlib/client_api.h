@@ -4,7 +4,10 @@
 #include <stdint.h>
 
 #define MINLENGTH 56
-#define SEND_KEY_MSG_MINLENGTH 170
+#define SEND_KEY_MSG_MINLENGTH 270
+#define MAXLEN_ROOM 20
+#define MAXLEN_USER 20
+#define MAXENCLETLEN 260
 
 struct cm
 {
@@ -19,9 +22,20 @@ struct skm
 {
     int16_t message_type;
     int16_t message_length;
-    uint8_t attributes[SEND_KEY_MSG_MINLENGTH];
+    uint16_t attributes[SEND_KEY_MSG_MINLENGTH];
 };
 typedef struct skm SEND_KEY_MSG;
+
+struct sr
+{
+    int16_t message_type;
+    uint8_t xlen_r;
+    uint8_t xlen_u;
+    char enc_room[MAXLEN_ROOM][MAXENCLETLEN];
+    char enc_usr[MAXLEN_ROOM][MAXENCLETLEN];
+    uint8_t backlog;
+};
+typedef struct sr SEND_REQ;
 
 struct si
 {
@@ -63,13 +77,15 @@ struct SendThreadParams{
     int arrsize;
 };
 
-void make_find_req(CLIENT_MSG find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len );
-void make_alloc_req(CLIENT_MSG alloc_req, int clientfd, char roomname[], char username[],int backlog, struct sockaddr_in address, int address_len);
+void make_find_req(SEND_REQ find_req, int clientfd,char roomname[],char username[], struct sockaddr_in address, int address_len,char* m,char* e );
+void make_alloc_req(SEND_REQ alloc_req, int clientfd, char roomname[], char username[],int backlog, struct sockaddr_in address, int address_len,char* m,char* e);
 
 void* refresh_NAT_entry(void* arg);
 void* listen_for_Update(void* arg);
 void* recv_msg(void* arg);
 void* send_msg(void* arg);
+
+void handle_key(SEND_KEY_MSG msg, char* server_mod, char* server_e);
 
 void prcess_find_resp(CLIENT_MSG find_res);
 
