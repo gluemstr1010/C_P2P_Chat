@@ -23,11 +23,11 @@ struct cim
 {
     int16_t message_type;
     uint16_t port;
-    uint8_t client_addr[4];
-    uint8_t xlen_r;
+    char client_addr[17];
     uint8_t xlen_u;
-    char enc_room[MAXLEN_ROOM][MAXENCLETLEN];
     char enc_usr[MAXLEN_ROOM][MAXENCLETLEN];
+    uint8_t xlen_r;
+    char enc_room[MAXLEN_ROOM][MAXENCLETLEN];
 };
 typedef struct cim CLIENT_INFO_MSG;
 
@@ -92,10 +92,10 @@ struct si
 };
 typedef struct si server_info;
 
-void make_find_res(SEND_REQ find_req, int serv_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, char* roomname,char* usrname,char* e, char* m,uint16_t uid);
+void make_find_res(SEND_REQ find_req, int serv_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, char* roomname,char* usrname,char* e, char* m,uint16_t uid,char hash[65]);
 void broadcast_new_client(int sockfd,u_int16_t port,char *sourceaddr, char *usrname, char *roomname);
 
-void make_alloc_res(SEND_REQ alloc_req,int serv_sockfd, char* sourceIP, u_int16_t port, struct sockaddr_in address,char* roomname,char* usrname,uint16_t uid);
+void make_alloc_res(SEND_REQ alloc_req,int serv_sockfd, char* sourceIP, u_int16_t port, struct sockaddr_in address,char* roomname,char* usrname,uint16_t uid,char hash[65]);
 int canbe_server(int i,char *chatname,uint8_t temp_add[],int16_t port);
 
 void send_key(int serv_sockfd,struct sockaddr_in address,char* mod,char* exponent,uint16_t uid);

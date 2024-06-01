@@ -206,7 +206,7 @@ char* get_d(char* eul,char* e)
     return yy2;
 }
 
-void encrypt(char message[],char* e,char* n, char encrypted_msg[20][280] )
+void encrypt(char* message,char* e,char* n, char encrypted_msg[][280] )
 {
     mpz_t pom,chrr, modulus,exponent;
     mpz_init(pom);
@@ -225,7 +225,10 @@ void encrypt(char message[],char* e,char* n, char encrypted_msg[20][280] )
         mpz_powm(pom,chrr,exponent,modulus);
         
         char *pomstr = mpz_get_str(NULL,10,pom);
-        strcpy(encrypted_msg[i],pomstr);
+        
+        strncpy(encrypted_msg[i], pomstr, 279);
+        encrypted_msg[i][279] = '\0'; 
+
         // printf("%s\n",pomstr);
         free(pomstr);
     }
@@ -260,8 +263,6 @@ void decrypt(char encrypted_msg[20][280],char* dd,char* n,char* decrypted_messag
             decrypted_message[i] = getchar;
              free(pomstr);  
     }
-
-    decrypted_message[msglen] = "\0";
     
     mpz_clear(pom);
     mpz_clear(chrr);

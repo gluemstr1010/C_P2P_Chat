@@ -160,11 +160,6 @@ int main()
 
             char* pd = get_d(euler,exponent); // private d
 
-            WriteKeys(uid,client_modulus,client_exponent,mod,exponent,pd); // WRITE KEYS TO FILES
-
-            free(client_modulus);
-            free(client_exponent);
-
             // // // printf("p:%s\n",p);
             // // // printf("q:%s\n",q);
             // // // printf("phi:%s\n",euler);
@@ -179,25 +174,27 @@ int main()
             uint8_t roomnamelen = send_req.xlen_r;
             uint8_t usrnamelen = send_req.xlen_u;
             
-            char* roomname = (char*)calloc(roomnamelen, sizeof(char));
-            char* usrname = (char*)calloc(usrnamelen, sizeof(char));
+            char* roomname = (char*)calloc(roomnamelen+1, sizeof(char));
+            char* usrname = (char*)calloc(usrnamelen+1, sizeof(char));
 
             decrypt(send_req.enc_room,pd,mod,roomname,roomnamelen);
             decrypt(send_req.enc_usr,pd,mod,usrname,usrnamelen);
-            
-            roomname[roomnamelen] = '\0';
-            usrname[usrnamelen] = '\0';
 
             // printf("0x%02X",send_req.message_type);
             if(send_req.message_type == 0x02)
             {
-                  make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid);
+                  make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid,getHash);
             }
             if(send_req.message_type == 0x01)
             {   
-                make_find_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,exponent,mod,uid);
-                broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
+                make_find_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid,getHash);
+                // broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
             }
+
+            // WriteKeys(uid,client_modulus,client_exponent,mod,exponent,pd); // WRITE KEYS TO FILES
+
+            free(client_modulus);
+            free(client_exponent);
 
             // printf("%s",mod);
             // fflush(stdout);          

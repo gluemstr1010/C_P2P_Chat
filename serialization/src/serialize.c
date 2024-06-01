@@ -4,12 +4,15 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <unistd.h>
-#include <ftw.h>
 #include "../inc/serialize_api.h"
+#include "../../trackerserver/trackerlib/server_api.h"
+#include "../../enc/inc/rsa_api.h"
 
-const char* room_in = "\"room\":\"[^\"]\"\n \"backlog\":%d\n\"activeClients\":%d\n";
-const char* room_out = "\"room\":\"%s\"\n \"backlog\":%d\n\"activeClients\":%d\n";
+const char* room_in = "\"room\":\"[^\"]\"\n\"backlog\":%d\n\"activeClients\":%d\n";
+const char* room_out = "\"room\":\"%s\"\n\"backlog\":%d\n\"activeClients\":%d\n";
 
 
 const char* peer_in = "\t\"username\":\"\"[^\"]\"\";\"peeraddr\":\"\"%s\"\";\"peerport\":%d;\"refport\":%d;\"uid\":%d;\"keyhash\":\"[^\"]\"\n";
@@ -22,60 +25,216 @@ const char* prikey_in = "\"modulus\":\n\t\"\"[^\"]\"\n\"private_d\":\n\t\"[^\"]\
 const char* prikey_out = "\"modulus\":\n\t\"%s\"\n\"private_d\":\n\t\"%s\"";
 
 char* write_path = "../../dat/";
-char* rooms_path = "../dat/rooms.dat";
+const char* rooms_path = "../dat/rooms.dat";
 const char* client_keys = "../dat/keys/clients/";
 
-void CreateRoom(char* roomname,int backlog, int activeClients,char* usrname,char* peer_addr,uint16_t peer_port, uint16_t refresh_port)
+void CreateRoom(char* roomname,int backlog, int activeClients,char* usrname,char* peer_addr,uint16_t peer_port, uint16_t refresh_port,uint16_t uid,char* keyhash)
 {
-    struct room r;
-    r.backlog = backlog;
-    r.activeClients = activeClients;
-    strcpy(r.roomname,roomname);
 
     FILE* file;
-    const char* path = strcat(write_path,"rooms.dat");
 
-    file = fopen(path,"a");
+    file = fopen(rooms_path,"a");
 
-    fprintf(file,room_out,r.roomname,r.backlog,r.activeClients);
+    fprintf(file,room_out,roomname,backlog,activeClients);
 
-    WritePeer(usrname,peer_addr,peer_port,refresh_port);
+    fclose(file);
+
+    WritePeer(roomname,usrname,peer_addr,peer_port,refresh_port,uid,keyhash);
+
     // fprintf(file,peer_out,)
 }
 
-void WritePeer(char* usrname,char* peer_addr,uint16_t peer_port, uint16_t refresh_port)
+void WritePeer(char* roomname,char* usrname,char* peer_addr,uint16_t peer_port, uint16_t refresh_port,uint16_t uid,char* keyhash)
 {
-    struct peer p;
-    strcpy(p.usrname,usrname);
-    strcpy(p.peer_addr,peer_addr);
-    p.peer_port = peer_port;
-    p.refresh_port = refresh_port;
-
-    FILE* file;
-
-    const char* path = strcat(write_path,"rooms.dat");
-    file = fopen(path,"a");
-
-    fprintf(file,peer_out,p.usrname,p.peer_addr,p.peer_port,p.refresh_port);
-
-    fclose(file);
-}
-
-int CheckKeyExistence(char* uid)
-{
-    FILE *file;
-    const char *filename = "example.txt";
-    char tmpPath[32];
-
-    file = fopen(filename, "r");
-    if (file != NULL) {
-        return 0;
-    } else {
-        file = fopen(filename, "w");
-        fclose(file);
-        return 1;
+     FILE *file = fopen(rooms_path, "r+");
+    if (file == NULL) {
+        perror("Failed to open file");
+        return;
     }
+
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *buffer = malloc(file_size + 1);
+    if (buffer == NULL) {
+        perror("Failed to allocate memory");
+        fclose(file);
+        return;
+    }
+    fread(buffer, 1, file_size, file);
+    buffer[file_size] = '\0';
+
+    // Find the room section
+    char room_section[100];
+    sprintf(room_section, "\"room\":\"%s\"", roomname);
+    char *room_pos = strstr(buffer, room_section);
+    if (room_pos == NULL) {
+        printf("Room %s not found\n", roomname);
+        free(buffer);
+        fclose(file);
+        return;
+    }
+
+    // Find the end of the activeClients section
+    char *active_clients_pos = strstr(room_pos, "activeClients");
+    if (active_clients_pos == NULL) {
+        printf("activeClients section not found for room %s\n", roomname);
+        free(buffer);
+        fclose(file);
+        return;
+    }
+    char *end_of_clients_pos = strchr(active_clients_pos, '\n');
+    if (end_of_clients_pos == NULL) {
+        printf("Could not find end of activeClients section\n");
+        free(buffer);
+        fclose(file);
+        return;
+    }
+
+    fprintf(file,peer_out,usrname,peer_addr,peer_port,refresh_port,uid,keyhash);
+
+    free(buffer);
+    fclose(file);
+
+
+    // FILE* file;
+    // file = fopen(rooms_path,"a");
+
+    // fprintf(file,peer_out,usrname,peer_addr,peer_port,refresh_port,uid,keyhash);
+
+    // fclose(file);
 }
+
+void ReadClients(int sockfd,char* roomname,const char* pos,char* exponent,char* mod,struct sockaddr_in address)
+{
+    char* tempusrnem =  (char*)calloc(20, sizeof(char));
+    char peeraddr[17];
+    bzero(&peeraddr,sizeof(peeraddr));
+    uint16_t port = 0;
+
+    CLIENT_INFO_MSG resp = {0};
+
+     char enc_room[MAXLEN_ROOM][MAXENCLETLEN];
+    memset(enc_room, '\0', sizeof(enc_room));
+
+     char enc_usr[MAXLEN_USER][MAXENCLETLEN];
+    memset(enc_usr, '\0', sizeof(enc_usr));   
+
+
+
+    while ((pos = strstr(pos, "\"username\":")) != NULL) {
+        sscanf(pos, "\"username\":\"%19[^\"]\";\"peeraddr\":\"%[^\"]\";\"peerport\":%hd;\"refport\":%*d;\"uid\":%*d;\"keyhash\":\"%*[^\"]\"",
+               tempusrnem,
+               peeraddr,
+               &port);
+
+        resp.message_type = 0x0005;
+
+        encrypt(tempusrnem,exponent,mod,enc_usr);
+
+        for(int i = 0; i < MAXLEN_USER; i++ )
+        {
+            for(int j = 0; j < MAXENCLETLEN; j++)
+            {
+                resp.enc_usr[i][j] = enc_usr[i][j];
+            }
+        }
+
+        resp.xlen_u = strlen(tempusrnem);
+
+        strcpy(resp.client_addr,peeraddr);
+
+        resp.port = port;
+
+        sendto(sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,sizeof(address));
+
+        bzero(&resp,sizeof(resp));
+        memset(tempusrnem,0,20);
+        memset(peeraddr,0,sizeof(peeraddr));
+
+        sleep(1);
+             
+        pos++;
+    }
+    
+    
+}
+
+const char* GetPeerPos(char* roomname)
+{
+    FILE* file = fopen("../dat/rooms.dat","r");
+
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *buffer = malloc(file_size + 1);
+    if (buffer == NULL) {
+        perror("Failed to allocate memory");
+        fclose(file);
+        return NULL;
+    }
+    fread(buffer, 1, file_size, file);
+    buffer[file_size] = '\0';
+
+    char room_section[100];
+    sprintf(room_section, "\"room\":\"%s\"", roomname);
+    char *room_pos = strstr(buffer, room_section);
+    if (room_pos == NULL) {
+        printf("Room %s not found\n", roomname);
+        free(buffer);
+        fclose(file);
+        return NULL;
+    }
+
+     char *active_clients_pos = strstr(room_pos, "activeClients");
+    if (active_clients_pos == NULL) {
+        printf("activeClients section not found for room %s\n", roomname);
+        free(buffer);
+        return NULL;
+    }
+
+    // Find the start of the peer info section
+    char *peer_info_start = strchr(active_clients_pos, '\n');
+    if (peer_info_start == NULL) {
+        printf("Could not find start of peer info\n");
+        free(buffer);
+        return NULL;
+    }
+    peer_info_start++;
+
+    // Find the end of the peer info section (start of the next room or end of file)
+    char *peer_info_end = strstr(peer_info_start, "\"room\":");
+    if (peer_info_end == NULL) {
+        peer_info_end = buffer + file_size; // If no more rooms, use the end of file
+    }
+
+    // Extract and parse peer info
+    size_t peer_info_len = peer_info_end - peer_info_start;
+    char *peer_info = malloc(peer_info_len + 1);
+    strncpy(peer_info, peer_info_start, peer_info_len);
+    peer_info[peer_info_len] = '\0';
+
+    const char *peer_start = peer_info;
+    peer_start = strstr(peer_start, "\"username\":");
+
+    return peer_start;
+}
+
+// int CheckKeyExistence(char* uid)
+// {
+//     FILE *file;
+//     const char *filename = "example.txt";
+//     // char tmpPath[32];
+
+//     file = fopen(filename, "r");
+//     if (file != NULL) {
+//         return 0;
+//     } else {
+//         file = fopen(filename, "w");
+//         fclose(file);
+//         return 1;
+//     }
+// }
 
 void WriteKeys(uint16_t uid,char* client_modulus,char* client_exponent,char* server_modulus,char* server_exponent,char* private_d)
 {
@@ -83,8 +242,6 @@ void WriteKeys(uint16_t uid,char* client_modulus,char* client_exponent,char* ser
   bzero(&dir,sizeof(dir));
 
   sprintf(dir,"%d",uid);
-
-  FILE* file;
 
   char path1[50];
   bzero(&path1,sizeof(path1));
@@ -169,14 +326,7 @@ int CheckRoomExistence(char* roomname)
 {
   // ../dat/rooms.dat
 
-  char path1[40];
-  bzero(&path1,sizeof(path1));
-  strcpy(path1,rooms_path);
-
-    // printf("\n%s",path1);
-    // fflush(stdout);
-
-  FILE* file = fopen(path1, "r");
+  FILE* file = fopen(rooms_path, "r");
 
   if(file == NULL)
   {
@@ -186,10 +336,12 @@ int CheckRoomExistence(char* roomname)
 
     char line[256];
     char room_line[256];
-    snprintf(room_line, sizeof(room_line), "\"room\": \"%s\"", roomname);
-
+    snprintf(room_line, sizeof(room_line), "\"room\":\"%s\"", roomname);
+    // printf("%s",room_line);
+    // fflush(stdout);
     while (fgets(line, sizeof(line), file)) {
-        if (strstr(line, room_line) != NULL) {
+
+        if (strstr(line, room_line) != 0) {
             fclose(file);
             return 0; // Room found
         }
