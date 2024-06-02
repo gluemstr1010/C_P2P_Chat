@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <dirent.h>
 #include "../inc/serialize_api.h"
 #include "../../trackerserver/trackerlib/server_api.h"
 #include "../../enc/inc/rsa_api.h"
@@ -18,8 +19,8 @@ const char* room_out = "\"room\":\"%s\"\n\"backlog\":%d\n\"activeClients\":%d\n"
 const char* peer_in = "\t\"username\":\"\"[^\"]\"\";\"peeraddr\":\"\"%s\"\";\"peerport\":%d;\"refport\":%d;\"uid\":%d;\"keyhash\":\"[^\"]\"\n";
 const char* peer_out = "\t\"username\":\"%s\";\"peeraddr\":\"%s\";\"peerport\":%d;\"refport\":%d;\"uid\":%d;\"keyhash\":\"%s\"\n";
 
-const char* pubkey_in = "\"modulus\":\n\t\"\"[^\"]\"\n\"exponent\":\n\t\"[^\"]\"";;
-const char* pubkey_out = "\"modulus\":\n\t\"%s\"\n\"exponent\":\n\t\"%s\" ";
+const char* pubkey_in = "\"modulus\":\n\t\"%[^\"]\"\n\"exponent\":\n\t\"%[^\"]\"";
+const char* pubkey_out = "\"modulus\":\n\t\"%s\"\n\"exponent\":\n\t\"%s\"";
 
 const char* prikey_in = "\"modulus\":\n\t\"\"[^\"]\"\n\"private_d\":\n\t\"[^\"]\"";;
 const char* prikey_out = "\"modulus\":\n\t\"%s\"\n\"private_d\":\n\t\"%s\"";
@@ -91,7 +92,30 @@ void WritePeer(char* roomname,char* usrname,char* peer_addr,uint16_t peer_port, 
         return;
     }
 
-    fprintf(file,peer_out,usrname,peer_addr,peer_port,refresh_port,uid,keyhash);
+    end_of_clients_pos++;
+
+    long insert_pos = end_of_clients_pos - buffer;
+
+    char new_peer_entry[500];
+    sprintf(new_peer_entry, peer_out,usrname,peer_addr,peer_port,refresh_port,uid,keyhash);
+
+    fseek(file, insert_pos, SEEK_SET);
+
+    long remainder_size = file_size - insert_pos;
+    char *remainder_buffer = (char*)malloc(remainder_size + 1);
+    if (remainder_buffer == NULL) {
+        perror("Failed to allocate memory");
+        free(buffer);
+        fclose(file);
+        return;
+    }
+    fread(remainder_buffer, 1, remainder_size, file);
+    remainder_buffer[remainder_size] = '\0';
+    
+    fseek(file, insert_pos, SEEK_SET);
+
+    fwrite(new_peer_entry, 1, strlen(new_peer_entry), file);
+    fwrite(remainder_buffer, 1, remainder_size, file);
 
     free(buffer);
     fclose(file);
@@ -105,7 +129,7 @@ void WritePeer(char* roomname,char* usrname,char* peer_addr,uint16_t peer_port, 
     // fclose(file);
 }
 
-void ReadClients(int sockfd,char* roomname,const char* pos,char* exponent,char* mod,struct sockaddr_in address)
+void ReadClients(int sockfd,const char* pos,char* exponent,char* mod,struct sockaddr_in address)
 {
     char* tempusrnem =  (char*)calloc(20, sizeof(char));
     char peeraddr[17];
@@ -119,8 +143,6 @@ void ReadClients(int sockfd,char* roomname,const char* pos,char* exponent,char* 
 
      char enc_usr[MAXLEN_USER][MAXENCLETLEN];
     memset(enc_usr, '\0', sizeof(enc_usr));   
-
-
 
     while ((pos = strstr(pos, "\"username\":")) != NULL) {
         sscanf(pos, "\"username\":\"%19[^\"]\";\"peeraddr\":\"%[^\"]\";\"peerport\":%hd;\"refport\":%*d;\"uid\":%*d;\"keyhash\":\"%*[^\"]\"",
@@ -155,9 +177,66 @@ void ReadClients(int sockfd,char* roomname,const char* pos,char* exponent,char* 
         sleep(1);
              
         pos++;
+    }   
+}
+
+void GetPeerPublicKey(int uid,char client_e[12],char client_m[270])
+{
+    char chruid[11];
+    memset(chruid,0,sizeof(chruid));
+    sprintf(chruid,"%d",uid);
+
+    char clientdir[40];
+    memset(clientdir,0,sizeof(clientdir));
+    strcpy(clientdir,client_keys);
+    strcat(clientdir,chruid);
+
+    char pubkeypath[50];
+    memset(pubkeypath,0,sizeof(pubkeypath));
+    strcpy(pubkeypath,clientdir);
+    strcat(pubkeypath,"/clientpub.key");
+
+    printf("%s\n",pubkeypath);
+    fflush(stdout);
+
+    DIR *dir = opendir(clientdir);
+    if (!dir) {
+        // perror("Unable to open directory");
+        goto skip;
     }
+
     
-    
+
+    FILE *file = fopen(pubkeypath, "r");
+    if (file == NULL) {
+        // perror("Unable to open file");
+        goto skip;
+    }
+
+    if(fscanf(file,pubkey_in,client_m,client_e) != 2)
+    {
+        // perror("Error reading values");
+        goto skip;
+    }
+
+    // char buffer[512];
+    // if (fgets(buffer, sizeof(buffer), file) != NULL) {
+    //     if (sscanf(buffer, peer_in, client_m, client_e) != 2) {
+    //         perror("Error reading values");
+    //     } 
+    //         printf("modulus: %s\n", client_m);
+    //         printf("exponent: %s\n", client_e);
+    //         fflush(stdout);
+        
+    // } else {
+    //     perror("Error reading line");
+    // }
+
+    closedir(dir);
+    fclose(file);
+
+
+    skip:
 }
 
 const char* GetPeerPos(char* roomname)
@@ -171,7 +250,7 @@ const char* GetPeerPos(char* roomname)
     if (buffer == NULL) {
         perror("Failed to allocate memory");
         fclose(file);
-        return NULL;
+        return '\0';
     }
     fread(buffer, 1, file_size, file);
     buffer[file_size] = '\0';
@@ -183,32 +262,29 @@ const char* GetPeerPos(char* roomname)
         printf("Room %s not found\n", roomname);
         free(buffer);
         fclose(file);
-        return NULL;
+        return '\0';
     }
 
      char *active_clients_pos = strstr(room_pos, "activeClients");
     if (active_clients_pos == NULL) {
         printf("activeClients section not found for room %s\n", roomname);
         free(buffer);
-        return NULL;
+        return '\0';
     }
 
-    // Find the start of the peer info section
     char *peer_info_start = strchr(active_clients_pos, '\n');
     if (peer_info_start == NULL) {
         printf("Could not find start of peer info\n");
         free(buffer);
-        return NULL;
+        return '\0';
     }
     peer_info_start++;
 
-    // Find the end of the peer info section (start of the next room or end of file)
     char *peer_info_end = strstr(peer_info_start, "\"room\":");
     if (peer_info_end == NULL) {
-        peer_info_end = buffer + file_size; // If no more rooms, use the end of file
+        peer_info_end = buffer + file_size;
     }
 
-    // Extract and parse peer info
     size_t peer_info_len = peer_info_end - peer_info_start;
     char *peer_info = malloc(peer_info_len + 1);
     strncpy(peer_info, peer_info_start, peer_info_len);
@@ -238,6 +314,8 @@ const char* GetPeerPos(char* roomname)
 
 void WriteKeys(uint16_t uid,char* client_modulus,char* client_exponent,char* server_modulus,char* server_exponent,char* private_d)
 {
+  int checkDir = CheckDirExistence(uid);
+
   char dir[12];
   bzero(&dir,sizeof(dir));
 

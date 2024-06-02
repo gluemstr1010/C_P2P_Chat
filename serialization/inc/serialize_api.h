@@ -29,8 +29,9 @@ int CheckDirExistence(uint16_t uid);
 int CheckRoomExistence(char* roomname);
 
 const char* GetPeerPos(char* roomname);
-void ReadClients(int sockfd,char* roomname,const char* pos,char* exponent,char* mod,struct sockaddr_in address);
+void ReadClients(int sockfd,const char* pos,char* exponent,char* mod,struct sockaddr_in address);
 
+void GetPeerPublicKey(int uid,char client_e[12],char client_m[270]);
 
 // path is uid, writing client modulus and exponent
 

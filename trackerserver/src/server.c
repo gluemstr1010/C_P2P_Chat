@@ -130,8 +130,6 @@ int main()
 
             uint16_t uid = (unsigned long long)rand() * (unsigned long long)RAND_MAX + rand();
 
-            int checkDir = CheckDirExistence(uid);
-
             char* p = generate_prime(state,428);
             char* q = generate_prime(state,428); // generate primes
         
@@ -181,17 +179,46 @@ int main()
             decrypt(send_req.enc_usr,pd,mod,usrname,usrnamelen);
 
             // printf("0x%02X",send_req.message_type);
+            int checkRoom = 0;
             if(send_req.message_type == 0x02)
             {
                   make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid,getHash);
             }
             if(send_req.message_type == 0x01)
             {   
-                make_find_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid,getHash);
-                // broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
+                SERV_MSG resp = {0};
+                checkRoom = CheckRoomExistence(roomname);
+                char let = 'l';
+                int a = 0;
+
+                if(checkRoom == 1)
+                {
+                     resp.message_type = 0x0003;
+                    resp.attributes[1] = 0x03;
+                    
+                    char errmsg[] = "No room found !";
+                    resp.attributes[3] = strlen(errmsg);
+                    for(size_t i = 4; i < 4 + strlen(errmsg); i++  )
+                    {
+                        let = errmsg[i - 4];
+                        a = (int)let;
+                        resp.attributes[i] = a;
+                    }
+                    sendto(server_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&client_addr,sizeof(client_addr));
+                }
+                else
+                {
+                    make_find_res(server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid,getHash,resp);
+                    broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
+                }
+                
+            }
+            if(checkRoom != 1)
+            {
+                 WriteKeys(uid,client_modulus,client_exponent,mod,exponent,pd); // WRITE KEYS TO FILES
             }
 
-            // WriteKeys(uid,client_modulus,client_exponent,mod,exponent,pd); // WRITE KEYS TO FILES
+           
 
             free(client_modulus);
             free(client_exponent);

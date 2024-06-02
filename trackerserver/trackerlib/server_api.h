@@ -92,7 +92,7 @@ struct si
 };
 typedef struct si server_info;
 
-void make_find_res(SEND_REQ find_req, int serv_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, char* roomname,char* usrname,char* e, char* m,uint16_t uid,char hash[65]);
+void make_find_res(int serv_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, char* roomname,char* usrname,char* e, char* m,uint16_t uid,char hash[65],SERV_MSG resp);
 void broadcast_new_client(int sockfd,u_int16_t port,char *sourceaddr, char *usrname, char *roomname);
 
 void make_alloc_res(SEND_REQ alloc_req,int serv_sockfd, char* sourceIP, u_int16_t port, struct sockaddr_in address,char* roomname,char* usrname,uint16_t uid,char hash[65]);
