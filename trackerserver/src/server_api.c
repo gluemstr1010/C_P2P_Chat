@@ -22,8 +22,8 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
 
     socklen_t addrsiz = sizeof(address);
 
-   SERV_MSG resp;
-   memset(&resp,0,sizeof(resp));
+    SERV_MSG resp;
+    memset(&resp,0,sizeof(resp));
    
     char let = 'c';
 
@@ -32,20 +32,18 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
     int a = 0;
     if(checkRoom == 0)
     {
-        // room exists return error
-
+        resp.message_type  = 0x0003;
+        sendto(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,sizeof(address));
     }
-        resp.message_type = 0x0003;
-        resp.attributes[1] = 0x03;
-        
-         char succmsg[] = "Server_addded";
-         resp.attributes[3] = strlen(succmsg);
-         for(size_t i = 4; i < 4 + strlen(succmsg); i++  )
-         {
-             let = succmsg[i - 4];
-            a = (int)let;
-            resp.attributes[i] = a;
-         }
+    else
+    {
+         resp.message_type = 0x0004;
+
+        char chruid[12];
+        memset(chruid,0,sizeof(chruid));
+        sprintf(chruid,"%d",uid);
+        strcpy(resp.attribute,chruid);
+
         sendto(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,sizeof(address));
 
         bzero(&resp,sizeof(resp));
@@ -63,6 +61,7 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
         
 
         CreateRoom(roomname,backlog,1,usrname,sourceIP,port,refport,uid,hash);
+    }
 
         // printf("%s\n",roomname);
     // printf("%s\n",usrname);
@@ -202,15 +201,11 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
 //     return 0;
 // }
 
-void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, char* roomname,char* usrname,char* client_e, char* client_m,uint16_t uid,char hash[65],SERV_MSG resp)
+void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, char* roomname,char* usrname,char* client_e, char* client_m,uint16_t uid,char hash[65])
 {
+        SERV_MSG resp = {0};
 
         socklen_t addrsize = sizeof(struct sockaddr_in);
-    
-        resp.message_type = 0x0004;
-
-        sendto(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,sizeof(address));
-        sleep(1);
 
         char tempusrnem[20];
         bzero(&tempusrnem,sizeof(tempusrnem));
@@ -224,9 +219,18 @@ void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct so
         {
             printf("something bad happened");    
         }
-        ReadClients(client_sockfd,pos,client_e,client_m,address);
+        resp.message_type = 0x0004;
+        char chruid[12];
+        memset(chruid,0,sizeof(chruid));
+        sprintf(chruid,"%d",uid);
 
-        bzero(&resp,sizeof(resp));
+        strcpy(resp.attribute,chruid);
+
+        sendto(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,sizeof(address));
+
+        sleep(1);
+
+        ReadClients(client_sockfd,pos,client_e,client_m,address);
 
         recvfrom(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,&addrsize);
 
@@ -461,22 +465,6 @@ void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct so
 
 }
 
-void process_req(SERV_MSG req,char *chatname, char *usrname,int chatnamelen, int usrnamelen )
-{
-    char let = 'l';
-     for( int i = 15; i < 15 + chatnamelen ; i++)
-   {
-      let = (char)req.attributes[i];
-      chatname[i- (15)] = let;
-   }
-   
-   for(int i = 17 + chatnamelen; i < 17 + chatnamelen + usrnamelen ; i++ )
-   {
-      let = (char)req.attributes[i];
-      usrname[i- (17 + chatnamelen)] = let;
-   }
-}
-
 uint8_t* process_srcIP(char* srcIP,uint8_t client_ipadd[])
 {
     
@@ -654,7 +642,7 @@ void send_key(int serv_sockfd,struct sockaddr_in address,char* mod,char* exponen
     SEND_KEY_MSG ack;
     bzero(&ack,sizeof(ack));
 
-    ack.message_type = 0x1022;
+    ack.message_type = htons(0x1022);
 
     ack.uid = uid;
 
@@ -663,54 +651,6 @@ void send_key(int serv_sockfd,struct sockaddr_in address,char* mod,char* exponen
 
     sendto(serv_sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&address,sizeof(address));
 
-   //    printf("%ld\n",strlen(mod));
-
-    // ack.message_type = 0x2020;
-
-    // ack.exponent_length = strlen(exponent);
-    // ack.modulus_length = strlen(mod);
-    // strcpy(ack.exponent,exponent);
-    // strcpy(ack.modulus,mod);    
-
-    // ack.attributes[0] = 0x1;
-    // ack.attributes[1] = strlen(exponent);
-
-    // char c = 'c';
-    // int a = 0;
-
-    // for(size_t i = 2; i < 2 + strlen(exponent); i++)
-    // {
-    //     c = exponent[i-2];
-    //     a = (int)c;
-    //     // printf("%c",c);
-    //     // fflush(stdout);
-    //     ack.attributes[i] = a;
-    // }
-    // // place exponent into message
-
-    // ack.attributes[(2 + strlen(exponent))] = 0x2;
-    // ack.attributes[(3 + strlen(exponent))] = strlen(mod);
-    
-    // for(size_t i = (4 + strlen(exponent)); i < ((4 + strlen(exponent)) + strlen(mod)); i++ )
-    // {
-    //     c = mod[i- (4 + strlen(exponent)) ];
-    //     a = (int)c;
-    //     //  printf("%c",c);
-    //     //  fflush(stdout);
-    //     ack.attributes[i] = a;
-    // } 
-    // // place modulus into message
-
-    // // for(size_t i = 2; i < 2 + strlen(exponent); i++)
-    // // {
-    // //     c = ack.attributes[i];
-    // //     printf("%c",c);
-    // //     fflush(stdout);
-    // // }
-    // ack.message_length = strlen(mod) + strlen(exponent);
-
-    // sleep(1);
-    // sendto(serv_sockfd,&ack,sizeof(ack),0,(struct sockaddr*)&address, sizeof(address));
 }
 
 char* convert_IP_tochar(uint8_t ipadd[])

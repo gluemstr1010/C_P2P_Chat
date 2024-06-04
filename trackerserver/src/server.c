@@ -99,7 +99,6 @@ int main()
         
         // printf("0x%02X\n",req.message_type);
         // fflush(stdout);
-        
 
         if(init.message_type == 0x2200)
         {    
@@ -188,27 +187,15 @@ int main()
             {   
                 SERV_MSG resp = {0};
                 checkRoom = CheckRoomExistence(roomname);
-                char let = 'l';
-                int a = 0;
-
                 if(checkRoom == 1)
                 {
-                     resp.message_type = 0x0003;
-                    resp.attributes[1] = 0x03;
+                    resp.message_type = 0x0006;
                     
-                    char errmsg[] = "No room found !";
-                    resp.attributes[3] = strlen(errmsg);
-                    for(size_t i = 4; i < 4 + strlen(errmsg); i++  )
-                    {
-                        let = errmsg[i - 4];
-                        a = (int)let;
-                        resp.attributes[i] = a;
-                    }
                     sendto(server_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&client_addr,sizeof(client_addr));
                 }
                 else
                 {
-                    make_find_res(server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid,getHash,resp);
+                    make_find_res(server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid,getHash);
                     broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
                 }
                 
