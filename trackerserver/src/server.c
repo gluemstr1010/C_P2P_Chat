@@ -80,6 +80,7 @@ int main()
         gmp_randseed_ui(state, time(NULL));
         srand(time(NULL));
          bzero(&init,sizeof(init));
+         bzero(&send_req,sizeof(send_req));
         //  init.attribute1 = (char*)calloc(strlen(270), sizeof(char));
         //  init.attribute2 = (char*)calloc(strlen(6), sizeof(char));
          bzero(&client_addr,sizeof(client_addr));
@@ -95,10 +96,75 @@ int main()
         char temp[16];
         bzero(&temp,sizeof(temp));
         strcpy(temp,sourceip);
-        // char let;
+        char getHash[65];
+        memset(getHash,0,sizeof(getHash));
         
-        // printf("0x%02X\n",req.message_type);
+        // printf("0x%02X\n",init.message_type);
         // fflush(stdout);
+
+        if(init.message_type == 0x4400)
+        {
+            char hash[65];
+            memset(hash,0,sizeof(hash));
+            const char* getclienthash = RetrieveClientHash(init.uid,hash);
+
+            if(strcmp(getclienthash,init.attribute1) == 0)
+            {
+                char client_modulus[270];
+                char client_exponent[12];
+                char servermod[260];
+                char serverprivated[260];
+                memset(client_modulus,0,sizeof(client_modulus));
+                memset(client_exponent,0,sizeof(client_exponent));
+                memset(servermod,0,sizeof(servermod));
+                memset(serverprivated,0,sizeof(serverprivated));
+
+                GetPeerPublicKey(init.uid,client_exponent,client_modulus);
+                GetPrivateKey(init.uid,serverprivated,servermod);
+
+                bzero(&init,sizeof(init));
+                init.message_type = htons(0x1044);
+                
+                sendto(server_sockfd,&init,sizeof(init),0,(struct sockaddr*)&client_addr,sizeof(client_addr));
+
+                recvfrom(server_sockfd,&send_req,sizeof(send_req),0,(struct sockaddr*)&client_addr,&addr_size);
+
+                uint8_t roomnamelen = send_req.xlen_r;
+                uint8_t usrnamelen = send_req.xlen_u;
+                
+                char* roomname = (char*)calloc(roomnamelen+1, sizeof(char));
+                char* usrname = (char*)calloc(usrnamelen+1, sizeof(char));
+
+                decrypt(send_req.enc_room,serverprivated,servermod,roomname,roomnamelen);
+                decrypt(send_req.enc_usr,serverprivated,servermod,usrname,usrnamelen);
+
+                printf("%s",roomname);
+                printf("\n%s",usrname);
+                fflush(stdout);
+
+                //  if(send_req.message_type == 0x02)
+                //  {
+                //         // make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid);
+                //  }
+                //  if(send_req.message_type == 0x01)
+                //  {   
+                //     SERV_MSG resp = {0};
+                //     // checkRoom = CheckRoomExistence(roomname);
+                //     if(1 == 1)
+                //     {
+                //         resp.message_type = 0x0006;
+                        
+                //         sendto(server_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&client_addr,sizeof(client_addr));
+                //     }
+                //     else
+                //     {
+                //         make_find_res(server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid);
+                //         // broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
+                //     }
+                
+                //  }
+            }
+        }
 
         if(init.message_type == 0x2200)
         {    
@@ -120,7 +186,7 @@ int main()
             // Format the string with the variables
             sprintf(formatted_string, "\"modulus\":\n\t\"%s\"\n\"exponent\":\n\t\"%s\"\n", client_modulus, client_exponent);
             unsigned char shaHash[64];
-            char getHash[65];
+            
             // bzero(&shaHash,sizeof(shaHash));
             memset(shaHash,0,sizeof(shaHash));
 
@@ -181,7 +247,7 @@ int main()
             int checkRoom = 0;
             if(send_req.message_type == 0x02)
             {
-                  make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid,getHash);
+                  make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid);
             }
             if(send_req.message_type == 0x01)
             {   
@@ -195,14 +261,14 @@ int main()
                 }
                 else
                 {
-                    make_find_res(server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid,getHash);
+                    make_find_res(server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid);
                     broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
                 }
                 
             }
             if(checkRoom != 1)
             {
-                 WriteKeys(uid,client_modulus,client_exponent,mod,exponent,pd); // WRITE KEYS TO FILES
+                 WriteKeys(uid,client_modulus,client_exponent,mod,exponent,pd,getHash); // WRITE KEYS TO FILES
             }
 
            

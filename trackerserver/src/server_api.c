@@ -15,7 +15,7 @@
 server_info servers[10];
 // int activeServers = 0;
 
-void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int16_t port, struct sockaddr_in address,char* roomname,char* usrname,uint16_t uid,char hash[65])
+void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int16_t port, struct sockaddr_in address,char* roomname,char* usrname,uint16_t uid)
 {
 
     int backlog = alloc_req.backlog;
@@ -25,11 +25,10 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
     SERV_MSG resp;
     memset(&resp,0,sizeof(resp));
    
-    char let = 'c';
+   
 
     int checkRoom = CheckRoomExistence(roomname);
-    
-    int a = 0;
+
     if(checkRoom == 0)
     {
         resp.message_type  = 0x0003;
@@ -60,7 +59,7 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
         uint16_t refport = ntohs(address.sin_port);
         
 
-        CreateRoom(roomname,backlog,1,usrname,sourceIP,port,refport,uid,hash);
+        CreateRoom(roomname,backlog,1,usrname,sourceIP,port,refport,uid);
     }
 
         // printf("%s\n",roomname);
@@ -201,7 +200,7 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
 //     return 0;
 // }
 
-void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, char* roomname,char* usrname,char* client_e, char* client_m,uint16_t uid,char hash[65])
+void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, char* roomname,char* usrname,char* client_e, char* client_m,uint16_t uid)
 {
         SERV_MSG resp = {0};
 
@@ -236,232 +235,7 @@ void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct so
 
         uint16_t refport = ntohs(address.sin_port);
 
-        WritePeer(roomname,usrname,sourceIP,port,refport,uid,hash);
-   
-
-    // while( == 0)
-    // {
-    //     // response.message_type = 0x0005;
-
-    //     // response.xlen_r = strlen(roomname);
-    //     // response.xlen_u = strlen(tempusrnem);
-
-    //     // encrypt(roomname,client_e,client_m,enc_room);
-    //     // encrypt(tempusrnem,client_e,client_m,enc_usr);
-
-    //     // sendto(client_sockfd,&response,sizeof(response),0,(struct sockaddr*)&address,sizeof(address));
-
-    //     // bzero(&response,sizeof(response));
-        
-    //     sleep(1);
-    // }
-
-//    char let;
-//    int a;
-//    socklen_t addrsiz = sizeof(address);
-//    uint8_t client_add[4];
-
-//    process_srcIP(sourceIP,client_add);
-
-//    uint8_t server_add[4];
-//    int16_t server_port;
-
-
-//    char err_msg[30];
-//    int err = 0;
-
-//    printf("\n%d\n",port);
-
-//    int x, y = 0;
-   
-
-   // go through rooms.dat file, check for room -- done
-   // if roomname doesnt exist return error response
-   // if it does, start sending peer addreses
-   
-//    for(int i = 0; i < activeServers ; i++)
-//    {    
-//         if(strcmp(servers[i].chatroom,roomname) == 0)
-//         {   
-//             bzero(&response,sizeof(response));
-//             for(int s = 0; s < 4; s++)
-//             {
-//                 server_add[s] = servers[i].server_addr[s];
-//             }
-//             server_port = servers[i].server_port;
-
-//              response.message_type = 0x0005;
-//             // memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
-
-//             response.port = server_port;
-//             response.client_addr[0] = server_add[0];
-//             response.client_addr[1] = server_add[1];
-//             response.client_addr[2] = server_add[2];
-//             response.client_addr[3] = server_add[3];
-
-//             response.xlen_r = strlen(servers[i].chatroom);
-//             response.xlen_r = strlen(servers[i].usrname);
-
-            
-//             memset(enc_room, '\0', sizeof(enc_room));
-//             memset(enc_usr, '\0', sizeof(enc_usr));   
-
-//             // encrypt(roomname,e,m,enc_room);
-//             // encrypt(usrname,e,m,enc_usr); 
-
-//             // response.attributes[1] = 0x55;
-//             // response.attributes[7] = (server_port >> 8) & 0xFF;
-//             // response.attributes[8] = server_port & 0xFF;
-//             // response.attributes[9] =  server_add[0];
-//             // response.attributes[10] = server_add[1];
-//             // response.attributes[11] = server_add[2];
-//             // response.attributes[12] = server_add[3];
-//             // response.attributes[13] = 0x05;
-//             // response.attributes[14] = server_backlog;
-//             // response.attributes[15] = 0x05;
-//             // u_int8_t usernamelen = strlen(servers[i].usrname);
-//             // response.attributes[16] = usernamelen;
-//             // char tempusrnem[usernamelen];
-//             // strcpy(tempusrnem,servers[i].usrname);
-//             // for(int i = 17; i < 16 + usernamelen; i++)
-//             // {
-//             //     let = tempusrnem[i - 17];
-//             //     a = (int)let;
-//             //     response.attributes[i] = a;
-//             // }
-
-
-//             // u_int16_t Value_size = 0;
-        
-//             //  response.message_length = sizeof(response.attributes);
-
-//             //     response.attributes[3] = ( Value_size >> 8 ) & 0xFF;
-//             //     response.attributes[4] = Value_size & 0xFF;
-//             sleep(5);
-//             sendto(client_sockfd,&response,sizeof(response),0,(struct sockaddr*)&address,sizeof(address));
-//             fflush(stdout);
-//                 for(int j = 0; j <= servers[i].activeClients ; j++)
-//                 {
-//                     if( servers[i].clients[j].client_port == 0 )
-//                     {
-                       
-//                         for(int k = 0; k < 4; k++)
-//                         {
-//                             servers[i].clients[j].client_addr[k] = client_add[k];
-//                         }
-                        
-
-
-//                         servers[i].clients[j].client_port = port;
-//                         servers[i].clients[j].chatroom = roomname;
-//                         servers[i].clients[j].usrname = usrname;
-//                         servers[i].activeClients++;
-                                
-//                         x = i;
-//                         y = j;	
-//                         // printf("\n%d",servers[i].clients[j].client_addr[0]);
-//                         // printf("%d",servers[i].clients[j].client_addr[1]);
-//                         // printf("%d",servers[i].clients[j].client_addr[2]);
-//                         // printf("%d",servers[i].clients[j].client_addr[3]);
-//                         // printf(":%d",servers[i].clients[j].client_port);
-//                         // fflush(stdout);
-                        
-//                         err = 1;
-//                         break;
-//                     }
-//                     sleep(4);
-//                     if (servers[i].clients[j].client_port != 0)
-//                     {
-//                          bzero(&response,sizeof(response));
-
-//                         memset(enc_room, '\0', sizeof(enc_room));
-//                        memset(enc_usr, '\0', sizeof(enc_usr));   
-
-//                         response.message_type = 0x0005;
-
-//                         response.port = servers[i].clients[j].client_port;
-//                         response.client_addr[0] = servers[i].clients[j].client_addr[0];
-//                         response.client_addr[1] = servers[i].clients[j].client_addr[1];
-//                         response.client_addr[2] = servers[i].clients[j].client_addr[2];
-//                         response.client_addr[3] = servers[i].clients[j].client_addr[3];
-
-//                         response.xlen_r = strlen(servers[i].clients[j].chatroom);
-//                         response.xlen_u = strlen(servers[i].clients[j].usrname);
-
-//                         // encrypt(servers[i].clients[j].chatroom,e,m,enc_room);
-//                         // encrypt(servers[i].clients[j].chatroom,e,m,enc_usr);
-
-//                         // memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
-//                         // response.attributes[1] = 0x05;
-//                         // response.attributes[7] = (servers[i].clients[j].client_port >> 8) & 0xFF;
-//                         // response.attributes[8] = servers[i].clients[j].client_port & 0xFF;
-//                         // response.attributes[9] =  servers[i].clients[j].client_addr[0];
-//                         // response.attributes[10] = servers[i].clients[j].client_addr[1];
-//                         // response.attributes[11] = servers[i].clients[j].client_addr[2];
-//                         // response.attributes[12] = servers[i].clients[j].client_addr[3];
-//                         //  response.attributes[15] = 0x05;
-//                         // u_int8_t clientusernamelen = strlen(servers[i].clients[j].usrname);
-//                         // response.attributes[16] = clientusernamelen;
-//                         // char tempusrnem[clientusernamelen];
-//                         // strcpy(tempusrnem,servers[i].clients[j].usrname);
-//                         // for(int i = 17; i < 16 + clientusernamelen; i++)
-//                         // {
-//                         //     let = tempusrnem[i - 17];
-//                         //     a = (int)let;
-//                         //     response.attributes[i] = a;
-//                         // }
-
-//                             int j = sendto(client_sockfd,&response,sizeof(response),MSG_WAITALL,(struct sockaddr*)&address,sizeof(address));
-//                             if(j < 0)
-//                             {
-//                                 printf("\n Last error was: %s - 11",strerror(errno));
-//                                 fflush(stdout);
-//                             }
-//                             bzero(&response,sizeof(response));
-
-// 			                j = recvfrom(client_sockfd,&response,sizeof(response),0,(struct sockaddr*)&address,&addrsiz);
-// 			                if(j < 0)
-//                             {
-//                                 printf("\n Last error was: %s - 22",strerror(errno));
-//                                 fflush(stdout);
-//                             }
-//                             printf( "\n %d - recv",j ); 
-			    
-// 			    servers[x].clients[y].refresh_port = ntohs(address.sin_port);
-// 			    printf("\n  %d - find refresh port",ntohs(address.sin_port));
-// 			    fflush(stdout);
-//                     }
-
-//               }
-//         }      
-//    }    
-
-//    if(err == 0)
-//    {
-//         strcpy(err_msg,"no_room_found");
-
-//         bzero(&response,sizeof(response));
-//         response.message_type = 0x0006;
-//         // // memcpy(response.trasaction_id,transcid,sizeof(response.trasaction_id));
-//         // response.attributes[1] = 0x06;
-//         // response.attributes[3] = strlen(err_msg);
-//         // int a;
-//         // for(size_t i = 4 ; i < 4 + strlen(err_msg); i++ )
-//         // {
-//         //     let = err_msg[i - 4];
-//         //     a = (int)let;
-//         //     response.attributes[i] = a;
-//         // }
-//         int h = sendto(client_sockfd,&response,sizeof(response),MSG_WAITALL,(struct sockaddr*)&address,sizeof(address));
-
-//         if(h < 0)
-//         {
-//                 printf("\n Last error was: %s",strerror(errno));
-//                 fflush(stdout);
-//         }
-            
-//         fflush(stdout);
-//    }
+        WritePeer(roomname,usrname,sourceIP,port,refport,uid);
 
 }
 
@@ -513,7 +287,7 @@ void broadcast_new_client(int sockfd, u_int16_t port,char *sourceaddr, char *usr
     char enc_usr[MAXLEN_USER][MAXENCLETLEN];
     
      while ((pos = strstr(pos, "\"username\":")) != NULL) {
-        sscanf(pos, "\"username\":\"%*[^\"]\";\"peeraddr\":\"%17[^\"]\";\"peerport\":%hd;\"refport\":%*d;\"uid\":%d;\"keyhash\":\"%*[^\"]\"",
+        sscanf(pos, "\"username\":\"%*[^\"]\";\"peeraddr\":\"%17[^\"]\";\"peerport\":%hd;\"refport\":%*d;\"uid\":%d",
                tempipadd,
                &peerport,
                &uid);
