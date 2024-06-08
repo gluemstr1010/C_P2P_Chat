@@ -24,8 +24,6 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
 
     SERV_MSG resp;
     memset(&resp,0,sizeof(resp));
-   
-   
 
     int checkRoom = CheckRoomExistence(roomname);
 
@@ -48,157 +46,27 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
         bzero(&resp,sizeof(resp));
 
 	    bzero(&address,sizeof(address));
+
+        again:
 	
 	    int k = recvfrom(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,&addrsiz);       
 
-	    if(k < 0)
+	    if (k < 0)
         {
-            printf("\n Last error was 2 -: %s",strerror(errno));   
-    	}	   
+            if (errno == EWOULDBLOCK || errno == EAGAIN)
+            {
+                goto again;
+            } 
+        }
     	
-        uint16_t refport = ntohs(address.sin_port);
-        
+        uint16_t refport = ntohs(address.sin_port);   
 
         CreateRoom(roomname,backlog,1,usrname,sourceIP,port,refport,uid);
     }
 
-        // printf("%s\n",roomname);
-    // printf("%s\n",usrname);
-    // fflush(stdout);
-  
-//    uint8_t transcid[12];
-//    memcpy(transcid,alloc_req.trasaction_id,sizeof(alloc_req.trasaction_id));
-
-    //    int chatnamelen = alloc_req.attributes[14];
-//    int usrnamelen = alloc_req.attributes[16 + chatnamelen];
-
-//    int backlog = alloc_req.attributes[19 + chatnamelen + usrnamelen];
-
-//    process_req(alloc_req,chatname,usrname,chatnamelen,usrnamelen);
-
-//    for(size_t i = 0; i < sizeof(servers) / sizeof(servers[0]); i++)
-//    {
-//       int cs = canbe_server(i,roomname,temp_add,port);
-      
-//       fflush(stdout);
-//       if(cs == 1)
-//       {
-//         bzero(&resp,sizeof(resp));
-//         resp.message_type = 0x0004;
-//         //  memcpy(resp.trasaction_id,transcid,sizeof(resp.trasaction_id));
-//          resp.attributes[1] = 0x04;
-         
-         
-//          char errmsg[] = "roomname or ip already exists";
-//          resp.attributes[3] = strlen(errmsg);
-//          for(size_t i = 4; i < 4 + strlen(errmsg); i++  )
-//          {
-//              let = errmsg[i - 4];
-//             a = (int)let;
-//             resp.attributes[i] = a;
-//          }
-//           sendto(client_sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&address,sizeof(address));
-//          break;
-//       }
-//       if(servers[i].server_port == 0)
-//       {
-//         for(int j = 0; j < 4; j++)
-//         {
-//          servers[i].server_addr[j] = temp_add[j];
-//         }
-//         servers[i].server_port = port;
-//         servers[i].chatroom = roomname;
-//         servers[i].usrname = usrname;
-//         servers[i].backlog = backlog;
-//         servers[i].activeClients = 0;
-//         servers[i].clients = (struct ci*)malloc(backlog * sizeof(struct ci));
-
-//         printf("\n%s",servers[i].chatroom);
-//         printf("\n%s",servers[i].usrname);
-//         printf("\n%d",servers[i].backlog);
-//         printf("\n%d",servers[i].server_addr[0]);
-//         printf("%d",servers[i].server_addr[1]);
-//         printf("%d",servers[i].server_addr[2]);
-//         printf("%d",servers[i].server_addr[3]);
-//         printf("::%d",servers[i].server_port);
-//         fflush(stdout);
-
-//         activeServers++;
-
-//         bzero(&resp,sizeof(resp));
-//         resp.message_type = 0x0003;
-//         // memcpy(resp.trasaction_id,transcid,sizeof(resp.trasaction_id));
-//         resp.attributes[1] = 0x03;
-        
-//          char succmsg[] = "Server_addded";
-//          resp.attributes[3] = strlen(succmsg);
-//          for(size_t i = 4; i < 4 + strlen(succmsg); i++  )
-//          {
-//              let = succmsg[i - 4];
-//             a = (int)let;
-//             resp.attributes[i] = a;
-//          }
-//          int k = 0;
-//         k = sendto(client_sockfd,&resp,sizeof(resp),MSG_WAITALL,(struct sockaddr*)&address,sizeof(address));
-//         if(k < 0)
-//         {
-//             printf("\n Last error was 1 -: %s",strerror(errno));   
-//     	}
-        
-// 	bzero(&resp,sizeof(resp));
-// 	bzero(&address,sizeof(address));
-	
-// 	k = recvfrom(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,&addrsiz);       
-// 	if(k < 0)
-//         {
-//             printf("\n Last error was 2 -: %s",strerror(errno));   
-//     	}	   
-    	
-// 	servers[i].refresh_port = ntohs(address.sin_port);
-// 	printf("\n %d - alloc_refresh_port",servers[i].refresh_port);
-// 	fflush(stdout);
-
-// 	break;
-//       }    
-//    }
+ 
 }
 
-// int canbe_server(int i,char *chatname,uint8_t temp_add[],int16_t port)
-// {
-    
-//     char *ss = servers[i].chatroom;
-//         if(ss!=NULL )
-//         {
-//             if(strcmp(ss,chatname) == 0)
-//             {
-//                 printf("\n This room name is taken");
-//                 return 1;
-//             }
-//         }
-
-//         int aresameIPs;
-//         int aresamePorts = 1;
-//         for(int j = 0; j < 4; j++)
-//         {
-//             aresameIPs = 1;
-//             if(temp_add[j] != servers[i].server_addr[j] )
-//             {
-//                 return 0;
-//             }
-//             if(port == servers[i].server_port)
-//             {
-//                 aresamePorts = 0;
-//             }
-//             aresameIPs = 0;
-//         }
-        
-//         if(aresameIPs == 0 && aresamePorts == 0)
-//         {
-//             return 1;
-//         }
-//     free(ss);
-//     return 0;
-// }
 
 void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct sockaddr_in address, char* roomname,char* usrname,char* client_e, char* client_m,uint16_t uid)
 {
@@ -225,14 +93,23 @@ void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct so
 
         strcpy(resp.attribute,chruid);
 
+        again:
+
         sendto(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,sizeof(address));
 
         sleep(1);
 
         ReadClients(client_sockfd,pos,client_e,client_m,address);
 
-        recvfrom(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,&addrsize);
+        int r = recvfrom(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,&addrsize);
 
+        if (r < 0)
+        {
+            if (errno == EWOULDBLOCK || errno == EAGAIN)
+            {
+                goto again;
+            } 
+        }
         uint16_t refport = ntohs(address.sin_port);
 
         WritePeer(roomname,usrname,sourceIP,port,refport,uid);
@@ -335,80 +212,6 @@ void broadcast_new_client(int sockfd, u_int16_t port,char *sourceaddr, char *usr
         pos++;
     }   
 
-    // struct sockaddr_in activeCLient;
-
-    // uint8_t new_client[4];
-
-    // process_srcIP(sourceaddr,new_client);
-
-    // SERV_MSG msg;
-    // msg.message_type = 0x0011;
-    // msg.attributes[1] = 0x11;
-    // msg.attributes[7] = (port >> 8) & 0xFF;
-    // msg.attributes[8] = port & 0xFF;
-    //  msg.attributes[9] = new_client[0];
-    // msg.attributes[10] = new_client[1];
-    // msg.attributes[11] = new_client[2];   
-    // msg.attributes[12] = new_client[3];
-    // msg.attributes[13] = 0x11;
-    // msg.attributes[14] = strlen(roomname);
-    // char let;
-    // int a;
-
-    // for(size_t i = 15; i < 15 + strlen(roomname); i++)
-    // {
-    //     let = roomname[i - 15];
-    //     a = (int)let;
-    //     msg.attributes[i] = a;
-    // }
-
-    // msg.attributes[16 + strlen(roomname)] = strlen(usrname);
-    // for (size_t i = 17 + strlen(roomname); i < 17 + strlen(roomname) + strlen(usrname); i++)
-    // {
-    //     let = usrname[i - (17 + strlen(roomname))];
-    //     a = (int)let;
-    //     msg.attributes[i] = a;
-    // }
-
-    // for (size_t i = 0; i < sizeof(msg.trasaction_id) / sizeof(msg.trasaction_id[0]); i++)
-    // {
-    //     msg.trasaction_id[i] = rand() % 256;
-    // }
-
-    // for(size_t i = 0; i < sizeof(servers) / sizeof(servers[0]); i++)
-    // {
-    //     if(servers[i].server_port != 0)
-    //     {
-    //         if(strcmp(servers[i].chatroom,roomname) == 0)
-    //         {
-    //             bzero(&activeCLient,sizeof(activeCLient));
-    //             activeCLient.sin_family = AF_INET;
-    //             activeCLient.sin_port = htons(servers[i].refresh_port);
-    //             inet_pton(AF_INET,convert_IP_tochar(servers[i].server_addr),&(activeCLient.sin_addr));
-    //                 // inet_pton(AF_INET,"127.0.0.1",&(activeCLient.sin_addr)); 
-	// 	printf(" \n%d ", servers[i].refresh_port);
-    //             fflush(stdout);
-
-    //             sendto(sockfd, &msg, sizeof(msg), 0,(struct sockaddr*)&activeCLient, sizeof(activeCLient));
-                    
-    //             for(int j = 0; j < servers[i].activeClients-1 ; j++)
-    //             {
-    //                 bzero(&activeCLient,sizeof(activeCLient));
-    //                 activeCLient.sin_family = AF_INET;
-    //                 activeCLient.sin_port = htons(servers[i].clients[j].refresh_port);
-    //                 inet_pton(AF_INET,convert_IP_tochar(servers[i].clients[j].client_addr),&(activeCLient.sin_addr));
-    //                 // inet_pton(AF_INET,"127.0.0.1",&(activeCLient.sin_addr)); 
-                
-                    
-    //                 int h = sendto(sockfd, &msg, sizeof(msg), 0,(struct sockaddr*)&activeCLient, sizeof(activeCLient));   
-                    
-    //                 printf("\n%d - c",h);
-    //                 fflush(stdout);
-    //             }
-    //         }
-    //     }
-        
-    // }
 }
 
 void send_key(int serv_sockfd,struct sockaddr_in address,char* mod,char* exponent,uint16_t uid)

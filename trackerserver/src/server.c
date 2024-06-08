@@ -37,6 +37,7 @@ void hashToHexString(const unsigned char *hash, char hexString[65]) {
 int main()
 {
     int server_sockfd;
+     struct timeval timeout;
 
     if( (server_sockfd = socket(AF_INET,SOCK_DGRAM,0)) < 0 )
     {
@@ -51,7 +52,11 @@ int main()
     server_addr.sin_port = htons(PORT);  // Bind at port 21504
     server_addr.sin_addr.s_addr = INADDR_ANY; // Bind to any incoming address
 
-    int conn;
+    timeout.tv_sec = 3; 
+    timeout.tv_usec = 0; 
+    setsockopt(server_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+    int conn = 0;
 
     if( (conn = bind(server_sockfd,(struct sockaddr*)&server_addr, sizeof(server_addr))) < 0 )
     {
@@ -87,7 +92,7 @@ int main()
          bzero(&port,sizeof(port));
          bzero(&sourceip,sizeof(sourceip));
 
-        conn = recvfrom(server_sockfd,&init ,sizeof(init),0,(struct sockaddr*)&client_addr,&addr_size);
+        conn = recvfrom(server_sockfd,&init ,sizeof(init),MSG_WAITALL,(struct sockaddr*)&client_addr,&addr_size);
         
         if(conn > 0)
         {
@@ -125,9 +130,18 @@ int main()
                 bzero(&init,sizeof(init));
                 init.message_type = htons(0x1044);
                 
+                again:
                 sendto(server_sockfd,&init,sizeof(init),0,(struct sockaddr*)&client_addr,sizeof(client_addr));
 
-                recvfrom(server_sockfd,&send_req,sizeof(send_req),0,(struct sockaddr*)&client_addr,&addr_size);
+                int r = recvfrom(server_sockfd,&send_req,sizeof(send_req),0,(struct sockaddr*)&client_addr,&addr_size);
+                
+                if (r < 0)
+                {
+                    if (errno == EWOULDBLOCK || errno == EAGAIN)
+                    {
+                        goto again;
+                    } 
+                }
 
                 uint8_t roomnamelen = send_req.xlen_r;
                 uint8_t usrnamelen = send_req.xlen_u;
@@ -138,13 +152,9 @@ int main()
                 decrypt(send_req.enc_room,serverprivated,servermod,roomname,roomnamelen);
                 decrypt(send_req.enc_usr,serverprivated,servermod,usrname,usrnamelen);
 
-                printf("%s",roomname);
-                printf("\n%s",usrname);
-                fflush(stdout);
-
                 //  if(send_req.message_type == 0x02)
                 //  {
-                //         // make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid);
+                //         make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid);
                 //  }
                 //  if(send_req.message_type == 0x01)
                 //  {   
@@ -176,14 +186,12 @@ int main()
 
             int buffer_size = snprintf(NULL, 0, "\"modulus\":\n\t\"%s\"\n\"exponent\":\n\t\"%s\"\n", client_modulus,client_exponent) + 1;
     
-            // Allocate memory for the final string
             char *formatted_string = (char*)calloc(buffer_size, sizeof(char));
             if (!formatted_string) {
                 fprintf(stderr, "Memory allocation failed\n");
                 return 1;
             }
 
-            // Format the string with the variables
             sprintf(formatted_string, "\"modulus\":\n\t\"%s\"\n\"exponent\":\n\t\"%s\"\n", client_modulus, client_exponent);
             unsigned char shaHash[64];
             
@@ -191,12 +199,12 @@ int main()
             memset(shaHash,0,sizeof(shaHash));
 
             createShaHash(formatted_string,shaHash);
-            hashToHexString(shaHash, getHash);        // GETTING THE HASH
+            hashToHexString(shaHash, getHash);
 
             uint16_t uid = (unsigned long long)rand() * (unsigned long long)RAND_MAX + rand();
 
             char* p = generate_prime(state,428);
-            char* q = generate_prime(state,428); // generate primes
+            char* q = generate_prime(state,428); 
         
             mpz_t n,pp,qq, eul;
             mpz_init(n);
@@ -209,30 +217,33 @@ int main()
 
             mpz_mul(n,pp,qq);
 
-            char* mod = mpz_get_str(NULL,10,n); // get modulus
+            char* mod = mpz_get_str(NULL,10,n); 
 
             mpz_sub_ui(pp,pp,1);
             mpz_sub_ui(qq,qq,1);
 
             mpz_mul(eul,pp,qq);
 
-            char* euler = mpz_get_str(NULL,10,eul); // get phi of n
+            char* euler = mpz_get_str(NULL,10,eul); 
 
             char* exponent = malloc(6);
             strcpy(exponent,"65537"); // exponent
 
-            char* pd = get_d(euler,exponent); // private d
+            char* pd = get_d(euler,exponent);
 
-            // // // printf("p:%s\n",p);
-            // // // printf("q:%s\n",q);
-            // // // printf("phi:%s\n",euler);
-            // // // printf("mod:%s\n",mod);
-            // // printf("private d:%s\n",pd);
+            again:
 
             send_key(server_sockfd,client_addr,mod,exponent,uid);
 
-            recvfrom(server_sockfd,&send_req ,sizeof(send_req),0,(struct sockaddr*)&client_addr,&addr_size); 
-            // listen for request
+            int r = recvfrom(server_sockfd,&send_req ,sizeof(send_req),0,(struct sockaddr*)&client_addr,&addr_size); 
+
+            if (r < 0)
+            {
+                if (errno == EWOULDBLOCK || errno == EAGAIN)
+                {
+                    goto again;
+                } 
+            }
 
             uint8_t roomnamelen = send_req.xlen_r;
             uint8_t usrnamelen = send_req.xlen_u;
@@ -243,7 +254,6 @@ int main()
             decrypt(send_req.enc_room,pd,mod,roomname,roomnamelen);
             decrypt(send_req.enc_usr,pd,mod,usrname,usrnamelen);
 
-            // printf("0x%02X",send_req.message_type);
             int checkRoom = 0;
             if(send_req.message_type == 0x02)
             {
@@ -268,16 +278,11 @@ int main()
             }
             if(checkRoom != 1)
             {
-                 WriteKeys(uid,client_modulus,client_exponent,mod,exponent,pd,getHash); // WRITE KEYS TO FILES
-            }
-
-           
+                 WriteKeys(uid,client_modulus,client_exponent,mod,exponent,pd,getHash);
+            }           
 
             free(client_modulus);
             free(client_exponent);
-
-            // printf("%s",mod);
-            // fflush(stdout);          
 
             mpz_clears(n,eul,pp,qq,NULL);
         }
