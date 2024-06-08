@@ -16,8 +16,8 @@ const char* room_in = "\"room\":\"[^\"]\"\n\"backlog\":%d\n\"activeClients\":%d\
 const char* room_out = "\"room\":\"%s\"\n\"backlog\":%d\n\"activeClients\":%d\n";
 
 
-const char* peer_in = "\t\"username\":\"\"[^\"]\"\";\"peeraddr\":\"\"%s\"\";\"peerport\":%d;\"refport\":%d;\"uid\":%d;\"keyhash\":\"[^\"]\"\n";
-const char* peer_out = "\t\"username\":\"%s\";\"peeraddr\":\"%s\";\"peerport\":%d;\"refport\":%d;\"uid\":%d;\"keyhash\":\"%s\"\n";
+const char* peer_in = "\t\"username\":\"\"[^\"]\"\";\"peeraddr\":\"\"%s\"\";\"peerport\":%d;\"refport\":%d;\"uid\":%d\n";
+const char* peer_out = "\t\"username\":\"%s\";\"peeraddr\":\"%s\";\"peerport\":%d;\"refport\":%d;\"uid\":%d\n";
 
 const char* pubkey_in = "\"modulus\":\n\t\"%[^\"]\"\n\"exponent\":\n\t\"%[^\"]\"";
 const char* pubkey_out = "\"modulus\":\n\t\"%s\"\n\"exponent\":\n\t\"%s\"";
@@ -25,11 +25,13 @@ const char* pubkey_out = "\"modulus\":\n\t\"%s\"\n\"exponent\":\n\t\"%s\"";
 const char* prikey_in = "\"modulus\":\n\t\"\"[^\"]\"\n\"private_d\":\n\t\"[^\"]\"";;
 const char* prikey_out = "\"modulus\":\n\t\"%s\"\n\"private_d\":\n\t\"%s\"";
 
+const char* hash_out = "\"hash\":\"%s\"";
+
 char* write_path = "../../dat/";
 const char* rooms_path = "../dat/rooms.dat";
 const char* client_keys = "../dat/keys/clients/";
 
-void CreateRoom(char* roomname,int backlog, int activeClients,char* usrname,char* peer_addr,uint16_t peer_port, uint16_t refresh_port,uint16_t uid,char* keyhash)
+void CreateRoom(char* roomname,int backlog, int activeClients,char* usrname,char* peer_addr,uint16_t peer_port, uint16_t refresh_port,uint16_t uid)
 {
 
     FILE* file;
@@ -40,12 +42,12 @@ void CreateRoom(char* roomname,int backlog, int activeClients,char* usrname,char
 
     fclose(file);
 
-    WritePeer(roomname,usrname,peer_addr,peer_port,refresh_port,uid,keyhash);
+    WritePeer(roomname,usrname,peer_addr,peer_port,refresh_port,uid);
 
     // fprintf(file,peer_out,)
 }
 
-void WritePeer(char* roomname,char* usrname,char* peer_addr,uint16_t peer_port, uint16_t refresh_port,uint16_t uid,char* keyhash)
+void WritePeer(char* roomname,char* usrname,char* peer_addr,uint16_t peer_port, uint16_t refresh_port,uint16_t uid)
 {
      FILE *file = fopen(rooms_path, "r+");
     if (file == NULL) {
@@ -97,7 +99,7 @@ void WritePeer(char* roomname,char* usrname,char* peer_addr,uint16_t peer_port, 
     long insert_pos = end_of_clients_pos - buffer;
 
     char new_peer_entry[500];
-    sprintf(new_peer_entry, peer_out,usrname,peer_addr,peer_port,refresh_port,uid,keyhash);
+    sprintf(new_peer_entry, peer_out,usrname,peer_addr,peer_port,refresh_port,uid);
 
     fseek(file, insert_pos, SEEK_SET);
 
@@ -145,7 +147,7 @@ void ReadClients(int sockfd,const char* pos,char* exponent,char* mod,struct sock
     memset(enc_usr, '\0', sizeof(enc_usr));   
 
     while ((pos = strstr(pos, "\"username\":")) != NULL) {
-        sscanf(pos, "\"username\":\"%19[^\"]\";\"peeraddr\":\"%[^\"]\";\"peerport\":%hd;\"refport\":%*d;\"uid\":%*d;\"keyhash\":\"%*[^\"]\"",
+        sscanf(pos, "\"username\":\"%19[^\"]\";\"peeraddr\":\"%[^\"]\";\"peerport\":%hd;\"refport\":%*d;\"uid\":%*d",
                tempusrnem,
                peeraddr,
                &port);
@@ -195,9 +197,6 @@ void GetPeerPublicKey(int uid,char client_e[12],char client_m[270])
     memset(pubkeypath,0,sizeof(pubkeypath));
     strcpy(pubkeypath,clientdir);
     strcat(pubkeypath,"/clientpub.key");
-
-    printf("%s\n",pubkeypath);
-    fflush(stdout);
 
     DIR *dir = opendir(clientdir);
     if (!dir) {
@@ -312,7 +311,7 @@ const char* GetPeerPos(char* roomname)
 //     }
 // }
 
-void WriteKeys(uint16_t uid,char* client_modulus,char* client_exponent,char* server_modulus,char* server_exponent,char* private_d)
+void WriteKeys(uint16_t uid,char* client_modulus,char* client_exponent,char* server_modulus,char* server_exponent,char* private_d,char hash[65])
 {
   int checkDir = CheckDirExistence(uid);
 
@@ -334,9 +333,14 @@ void WriteKeys(uint16_t uid,char* client_modulus,char* client_exponent,char* ser
   bzero(&path3,sizeof(path3));
   strcpy(path3,path1);
 
+  char path4[50];
+  bzero(&path4,sizeof(path4));
+  strcpy(path4,path1);
+
   strcat(path1,"/clientpub.key");
   strcat(path2,"/serverpub.key");
   strcat(path3,"/serverpri.key");
+  strcat(path4,"/clienthash.txt");
 
 //   printf("%s\n",path1);
 //   printf("%s\n",path2);
@@ -346,18 +350,22 @@ void WriteKeys(uint16_t uid,char* client_modulus,char* client_exponent,char* ser
   FILE* clientpub;
   FILE* serverpub;
   FILE* serverpri;
+  FILE* hashfile;
 
   clientpub = fopen(path1,"w");
   serverpub = fopen(path2,"w");
   serverpri = fopen(path3,"w");
+  hashfile = fopen(path4,"w");
 
   fprintf(clientpub,pubkey_out,client_modulus,client_exponent);
   fprintf(serverpub,pubkey_out,server_modulus,server_exponent);
   fprintf(serverpri,prikey_out,server_modulus,private_d);
+  fprintf(hashfile,hash_out,hash);
 
   fclose(clientpub);
   fclose(serverpub);
   fclose(serverpri);
+  fclose(hashfile);
 }
 
 int directory_exists(const char *path) {
@@ -431,3 +439,74 @@ int CheckRoomExistence(char* roomname)
     return 1; // Room not found
 }
 
+const char* RetrieveClientHash(uint16_t uid,char hash[65])
+{
+    char dirname[12];
+    memset(dirname,0,sizeof(dirname));
+    sprintf(dirname,"%d",uid);
+
+    char path[50];
+    memset(path,0,sizeof(path));
+
+    strcpy(path,client_keys);
+    strcat(path,dirname);
+
+    int checkdir = CheckDirExistence(uid);
+
+    if(checkdir == 1)
+    {
+        strcat(path,"/clienthash.txt");
+        FILE* file = fopen(path,"r");
+
+        if(file == NULL)
+        {
+            return "\0";
+        }
+
+       
+
+        fscanf(file,"\"hash\":\"%65[^\"]\"",hash);
+
+        fclose(file);
+
+        return hash;
+    }
+    else
+    {
+        return "\0";
+    }
+
+}
+void GetPrivateKey(uint16_t uid,char private_d[260],char modulus[260])
+{
+      char dirname[12];
+    memset(dirname,0,sizeof(dirname));
+    sprintf(dirname,"%d",uid);
+
+    char path[50];
+    memset(path,0,sizeof(path));
+
+    strcpy(path,client_keys);
+    strcat(path,dirname);
+
+    int checkdir = CheckDirExistence(uid);
+
+    if(checkdir == 1)
+    {
+        strcat(path,"/serverpri.txt");
+        FILE* file = fopen(path,"r");
+
+        if(file == NULL)
+        {
+            return;
+        }
+        fscanf(file,"\"modulus\":\n\t\"%260[^\"]\"\n\"private_d\":\n\t\"%260[^\"]\"",modulus,private_d);
+
+        fclose(file);
+    }
+    else
+    {
+        return;
+    }
+    return;
+}
