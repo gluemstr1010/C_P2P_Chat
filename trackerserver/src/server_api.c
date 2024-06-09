@@ -47,17 +47,18 @@ void make_alloc_res(SEND_REQ alloc_req,int client_sockfd, char* sourceIP, u_int1
 
 	    bzero(&address,sizeof(address));
 
-        again:
-	
-	    int k = recvfrom(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,&addrsiz);       
+	int k = 0;
+        
+	    
+	    k = recvfrom(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,&addrsiz);       
 
-	    if (k < 0)
-        {
-            if (errno == EWOULDBLOCK || errno == EAGAIN)
-            {
-                goto again;
-            } 
-        }
+	   if (k < 0)
+           {
+             if (errno == EWOULDBLOCK || errno == EAGAIN)
+             {
+                
+             } 
+           }
     	
         uint16_t refport = ntohs(address.sin_port);   
 
@@ -93,7 +94,7 @@ void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct so
 
         strcpy(resp.attribute,chruid);
 
-        again:
+        
 
         sendto(client_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&address,sizeof(address));
 
@@ -107,7 +108,7 @@ void make_find_res(int client_sockfd,  char* sourceIP, u_int16_t port, struct so
         {
             if (errno == EWOULDBLOCK || errno == EAGAIN)
             {
-                goto again;
+                
             } 
         }
         uint16_t refport = ntohs(address.sin_port);

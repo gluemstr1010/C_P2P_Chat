@@ -52,9 +52,9 @@ int main()
     server_addr.sin_port = htons(PORT);  // Bind at port 21504
     server_addr.sin_addr.s_addr = INADDR_ANY; // Bind to any incoming address
 
-    timeout.tv_sec = 3; 
+    timeout.tv_sec = 20; 
     timeout.tv_usec = 0; 
-    setsockopt(server_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+  //  setsockopt(server_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
     int conn = 0;
 
@@ -103,6 +103,8 @@ int main()
         strcpy(temp,sourceip);
         char getHash[65];
         memset(getHash,0,sizeof(getHash));
+
+	uint16_t uid = 0;
         
         // printf("0x%02X\n",init.message_type);
         // fflush(stdout);
@@ -130,7 +132,7 @@ int main()
                 bzero(&init,sizeof(init));
                 init.message_type = htons(0x1044);
                 
-                again:
+                uid = init.uid;
                 sendto(server_sockfd,&init,sizeof(init),0,(struct sockaddr*)&client_addr,sizeof(client_addr));
 
                 int r = recvfrom(server_sockfd,&send_req,sizeof(send_req),0,(struct sockaddr*)&client_addr,&addr_size);
@@ -139,9 +141,9 @@ int main()
                 {
                     if (errno == EWOULDBLOCK || errno == EAGAIN)
                     {
-                        goto again;
+                        
                     } 
-                }
+               }
 
                 uint8_t roomnamelen = send_req.xlen_r;
                 uint8_t usrnamelen = send_req.xlen_u;
@@ -151,28 +153,28 @@ int main()
 
                 decrypt(send_req.enc_room,serverprivated,servermod,roomname,roomnamelen);
                 decrypt(send_req.enc_usr,serverprivated,servermod,usrname,usrnamelen);
-
-                //  if(send_req.message_type == 0x02)
-                //  {
-                //         make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid);
-                //  }
-                //  if(send_req.message_type == 0x01)
-                //  {   
-                //     SERV_MSG resp = {0};
-                //     // checkRoom = CheckRoomExistence(roomname);
-                //     if(1 == 1)
-                //     {
-                //         resp.message_type = 0x0006;
-                        
-                //         sendto(server_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&client_addr,sizeof(client_addr));
-                //     }
-                //     else
-                //     {
-                //         make_find_res(server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid);
-                //         // broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
-                //     }
+		int checkRoom = 0;
+                  if(send_req.message_type == 0x02)
+                  {
+                       make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid);
+                  }
+                  if(send_req.message_type == 0x01)
+                  {   
+                     SERV_MSG resp = {0};
+                      checkRoom = CheckRoomExistence(roomname);
+                     if(checkRoom == 1)
+                     {
+                         resp.message_type = 0x0006;
+                      
+                         sendto(server_sockfd,&resp,sizeof(resp),0,(struct sockaddr*)&client_addr,sizeof(client_addr));
+                     }
+                     else
+                     {
+                         make_find_res(server_sockfd,sourceip,port,client_addr,roomname,usrname,client_exponent,client_modulus,uid);
+                        broadcast_new_client(server_sockfd,port,temp,usrname,roomname);
+                     }
                 
-                //  }
+                  }
             }
         }
 
@@ -201,7 +203,7 @@ int main()
             createShaHash(formatted_string,shaHash);
             hashToHexString(shaHash, getHash);
 
-            uint16_t uid = (unsigned long long)rand() * (unsigned long long)RAND_MAX + rand();
+            uid = (unsigned long long)rand() * (unsigned long long)RAND_MAX + rand();
 
             char* p = generate_prime(state,428);
             char* q = generate_prime(state,428); 
@@ -231,36 +233,45 @@ int main()
 
             char* pd = get_d(euler,exponent);
 
-            again:
+           
 
             send_key(server_sockfd,client_addr,mod,exponent,uid);
 
-            int r = recvfrom(server_sockfd,&send_req ,sizeof(send_req),0,(struct sockaddr*)&client_addr,&addr_size); 
+            int r = recvfrom(server_sockfd,&send_req ,sizeof(send_req),MSG_WAITALL,(struct sockaddr*)&client_addr,&addr_size); 
 
             if (r < 0)
             {
                 if (errno == EWOULDBLOCK || errno == EAGAIN)
                 {
-                    goto again;
+                   
                 } 
             }
-
-            uint8_t roomnamelen = send_req.xlen_r;
-            uint8_t usrnamelen = send_req.xlen_u;
-            
-            char* roomname = (char*)calloc(roomnamelen+1, sizeof(char));
-            char* usrname = (char*)calloc(usrnamelen+1, sizeof(char));
-
-            decrypt(send_req.enc_room,pd,mod,roomname,roomnamelen);
-            decrypt(send_req.enc_usr,pd,mod,usrname,usrnamelen);
 
             int checkRoom = 0;
             if(send_req.message_type == 0x02)
             {
+			  uint8_t roomnamelen = send_req.xlen_r;
+	            uint8_t usrnamelen = send_req.xlen_u;
+	            
+	            char* roomname = (char*)calloc(roomnamelen+1, sizeof(char));
+	            char* usrname = (char*)calloc(usrnamelen+1, sizeof(char));
+
+	            decrypt(send_req.enc_room,pd,mod,roomname,roomnamelen);
+	            decrypt(send_req.enc_usr,pd,mod,usrname,usrnamelen);
+             //	 printf("%s\n",roomname);
+	     //	 printf("%s\n",usrname);
                   make_alloc_res(send_req,server_sockfd,sourceip,port,client_addr,roomname,usrname,uid);
             }
             if(send_req.message_type == 0x01)
-            {   
+            { 
+               		  uint8_t roomnamelen = send_req.xlen_r;
+	            uint8_t usrnamelen = send_req.xlen_u;
+	            
+	            char* roomname = (char*)calloc(roomnamelen+1, sizeof(char));
+	            char* usrname = (char*)calloc(usrnamelen+1, sizeof(char));
+
+	            decrypt(send_req.enc_room,pd,mod,roomname,roomnamelen);
+	            decrypt(send_req.enc_usr,pd,mod,usrname,usrnamelen); 
                 SERV_MSG resp = {0};
                 checkRoom = CheckRoomExistence(roomname);
                 if(checkRoom == 1)
